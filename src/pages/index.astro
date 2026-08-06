@@ -11,7 +11,7 @@ import CategoryBar from '../components/CategoryBar.astro';
 >
 
 <CategoryBar />
-<HomeHero client:load />
+<HomeHero client:only="react" />
 
 
 <Sliderhome limit={12} label="Recién publicados" heading="Lo más nuevo" />
