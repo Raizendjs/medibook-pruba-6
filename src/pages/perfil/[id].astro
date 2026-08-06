@@ -1,0 +1,137 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import { StarRatingDisplay } from "../../components/StarRating";
+
+const { id } = Astro.params;
+
+// Server-side con service role: solo leemos y devolvemos los campos
+// seguros para un perfil público (nunca teléfono/CI/etc.).
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: profile } = await supabaseAdmin
+  .from("profiles")
+  .select("id, full_name, avatar_url, bio, role, created_at")
+  .eq("id", id)
+  .single();
+
+if (!profile) {
+  return Astro.redirect("/404/");
+}
+
+let avgRating = 0;
+let ratingCount = 0;
+let hostListings: { id: string; title: string; city: string | null; price: number; currency: string; coverUrl: string | null }[] = [];
+
+if (profile.role === "anfitrion") {
+  const { data: listings } = await supabaseAdmin
+    .from("listings")
+    .select("id, title, city, price, currency, listing_images(url, order_index)")
+    .eq("host_id", id)
+    .eq("status", "active");
+  const listingIds = (listings ?? []).map((l: any) => l.id);
+
+  hostListings = (listings ?? []).map((l: any) => {
+    const images = (l.listing_images ?? []).sort((a: any, b: any) => a.order_index - b.order_index);
+    return {
+      id: l.id,
+      title: l.title,
+      city: l.city,
+      price: l.price,
+      currency: l.currency,
+      coverUrl: images[0]?.url ?? null,
+    };
+  });
+
+  if (listingIds.length > 0) {
+    const { data: reviews } = await supabaseAdmin
+      .from("reviews")
+      .select("rating")
+      .in("listing_id", listingIds);
+    ratingCount = reviews?.length ?? 0;
+    avgRating = ratingCount > 0 ? (reviews ?? []).reduce((s: number, r: any) => s + r.rating, 0) / ratingCount : 0;
+  }
+} else {
+  const { data: ratings } = await supabaseAdmin.from("guest_ratings").select("rating").eq("guest_id", id);
+  ratingCount = ratings?.length ?? 0;
+  avgRating = ratingCount > 0 ? (ratings ?? []).reduce((s: number, r: any) => s + r.rating, 0) / ratingCount : 0;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  usuario: "Profesional de la salud",
+  anfitrion: "Anfitrión",
+  administrador: "Administrador",
+};
+
+const memberSince = new Date(profile.created_at).toLocaleDateString("es-EC", {
+  month: "long",
+  year: "numeric",
+});
+---
+
+<BaseLayout title={profile.full_name ?? "Perfil"}>
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-28">
+    <div class="rounded-3xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center">
+      {profile.avatar_url ? (
+        <img
+          src={profile.avatar_url}
+          alt={profile.full_name ?? "Perfil"}
+          class="w-28 h-28 rounded-full object-cover mx-auto ring-4 ring-primary-100 dark:ring-primary-900/40"
+        />
+      ) : (
+        <div class="w-28 h-28 rounded-full mx-auto flex items-center justify-center text-3xl font-bold text-white bg-neutral-400 dark:bg-neutral-700">
+          {(profile.full_name ?? "?").charAt(0).toUpperCase()}
+        </div>
+      )}
+
+      <h1 class="text-2xl font-bold text-neutral-900 dark:text-white mt-4">
+        {profile.full_name ?? "Sin nombre"}
+      </h1>
+      <p class="text-sm text-neutral-500 dark:text-neutral-400">
+        {ROLE_LABELS[profile.role] ?? profile.role} · en Medibookit desde {memberSince}
+      </p>
+
+      <div class="flex justify-center mt-4">
+        <StarRatingDisplay rating={avgRating} count={ratingCount} size="lg" />
+      </div>
+
+      {profile.bio && (
+        <p class="text-sm text-neutral-700 dark:text-neutral-300 mt-5 max-w-md mx-auto leading-relaxed">
+          {profile.bio}
+        </p>
+      )}
+    </div>
+
+    {profile.role === "anfitrion" && hostListings.length > 0 && (
+      <div class="mt-8">
+        <h2 class="text-lg font-semibold text-neutral-900 dark:text-white mb-4">
+          Propiedades que administra ({hostListings.length})
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {hostListings.map((l) => (
+            <a href={`/listings/${l.id}/`} class="block group">
+              <div class="aspect-square rounded-xl overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                {l.coverUrl ? (
+                  <img
+                    src={l.coverUrl}
+                    alt={l.title}
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                ) : (
+                  <div class="w-full h-full flex items-center justify-center text-neutral-400 dark:text-neutral-500 text-xs">
+                    Sin foto
+                  </div>
+                )}
+              </div>
+              <p class="text-sm font-medium text-neutral-900 dark:text-white mt-1.5 truncate">{l.title}</p>
+              <p class="text-xs text-neutral-500 dark:text-neutral-400">{l.city ?? ""} · {l.currency} {l.price}/hora</p>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+  </main>
+</BaseLayout>

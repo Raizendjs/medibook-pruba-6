@@ -1,0 +1,81 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Sliderhome from '../components/Sliderhome2.astro';
+import HomeHero from '../components/HomeHero.tsx';
+import CategoryBar from '../components/CategoryBar.astro';
+---
+
+<BaseLayout
+  title="Reserva espacios médicos en Guayaquil"
+  description="Reserva consultorios médicos, dentales y de fisioterapia por hora en Guayaquil. Espacios verificados en Vía Samborondón, Kennedy, Alborada, Centro, Ceibos y Urdesa."
+>
+
+<CategoryBar />
+<HomeHero client:load />
+
+
+<Sliderhome limit={12} label="Recién publicados" heading="Lo más nuevo" />
+
+<Sliderhome
+  limit={12}
+  label="Espacios médicos en"
+  heading="Vía Samborondón"
+  zone="via_samborondon"
+  viewAllHref="/listings/?zone=via_samborondon"
+  hideIfEmpty
+/>
+
+<Sliderhome
+  limit={12}
+  label="Espacios médicos en"
+  heading="Kennedy"
+  zone="kennedy"
+  viewAllHref="/listings/?zone=kennedy"
+  hideIfEmpty
+/>
+
+<Sliderhome
+  limit={12}
+  label="Espacios médicos en"
+  heading="Alborada"
+  zone="alborada"
+  viewAllHref="/listings/?zone=alborada"
+  hideIfEmpty
+/>
+
+<Sliderhome
+  limit={12}
+  label="Espacios médicos en"
+  heading="Centro"
+  zone="centro"
+  viewAllHref="/listings/?zone=centro"
+  hideIfEmpty
+/>
+
+<Sliderhome
+  limit={12}
+  label="Espacios médicos en"
+  heading="Los Ceibos"
+  zone="ceibos"
+  viewAllHref="/listings/?zone=ceibos"
+  hideIfEmpty
+/>
+
+<Sliderhome
+  limit={12}
+  label="Espacios médicos en"
+  heading="Urdesa"
+  zone="urdesa"
+  viewAllHref="/listings/?zone=urdesa"
+  hideIfEmpty
+/>
+
+<Sliderhome
+  limit={12}
+  label="Alojamientos populares en"
+  heading="Guayaquil"
+  city="Guayaquil"
+  viewAllHref="/listings/"
+/>
+
+</BaseLayout>

@@ -1,0 +1,83 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SupportChat from "../components/chat/SupportChat";
+import { createSupabaseServerClient } from "../lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) {
+  return Astro.redirect("/login/");
+}
+
+const { data: conversation } = await supabase
+  .from("conversations")
+  .select("id, status, admin_id, reason")
+  .eq("requester_id", userData.user.id)
+  .in("status", ["pending", "active", "closed"])
+  .order("created_at", { ascending: false })
+  .limit(1)
+  .maybeSingle();
+
+let messages: any[] = [];
+let adminName: string | null = null;
+let adminAvatar: string | null = null;
+
+if (conversation?.status === "active") {
+  const { data: messagesData } = await supabase
+    .from("messages")
+    .select("id, conversation_id, sender_id, body, created_at, read_at, attachment_path")
+    .eq("conversation_id", conversation.id)
+    .order("created_at", { ascending: true });
+  messages = messagesData ?? [];
+
+  if (conversation.admin_id) {
+    const supabaseAdmin = createClient(
+      import.meta.env.PUBLIC_SUPABASE_URL!,
+      import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const { data: adminUser } = await supabaseAdmin.auth.admin.getUserById(conversation.admin_id);
+    const { data: adminProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("avatar_url")
+      .eq("id", conversation.admin_id)
+      .maybeSingle();
+    adminName =
+      adminUser?.user?.user_metadata?.full_name ||
+      adminUser?.user?.user_metadata?.name ||
+      adminUser?.user?.email ||
+      "Administrador";
+    adminAvatar =
+      adminProfile?.avatar_url ||
+      adminUser?.user?.user_metadata?.avatar_url ||
+      adminUser?.user?.user_metadata?.picture ||
+      null;
+  }
+}
+---
+
+<BaseLayout title="Ayuda" description="Chatea con un administrador">
+  <br /><br />
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold text-black dark:text-white tracking-tight mb-2">
+      Ayuda
+    </h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+      ¿Tienes un problema o una pregunta? Pide un chat de ayuda y un
+      administrador te responderá aquí mismo.
+    </p>
+
+    <SupportChat
+      client:load
+      currentUserId={userData.user.id}
+      initialConversation={conversation ?? null}
+      initialMessages={messages}
+      adminName={adminName}
+      adminAvatar={adminAvatar}
+    />
+  </main>
+</BaseLayout>

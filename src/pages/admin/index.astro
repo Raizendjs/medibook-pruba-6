@@ -1,0 +1,134 @@
+---
+// Panel de ADMINISTRADOR — overview general. Protegido por middleware:
+// solo role === "administrador". El detalle vive en sub-páginas:
+// /admin/usuarios/, /admin/solicitudes-rol/, /admin/reservas/, /admin/chats/
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const user = Astro.locals.user;
+const displayName = user?.user_metadata?.full_name || user?.user_metadata?.name || "Administrador";
+const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers();
+const authUsers = authUsersData?.users ?? [];
+
+const isOnline = (u: any) => {
+  const last = new Date(u.last_sign_in_at || 0).getTime();
+  return (Date.now() - last) / 60000 < 10;
+};
+
+const { count: listingsCount } = await supabaseAdmin
+  .from("listings")
+  .select("id", { count: "exact", head: true });
+
+const { count: bookingsCount } = await supabaseAdmin
+  .from("bookings")
+  .select("id", { count: "exact", head: true });
+
+const { count: pendingBookingsCount } = await supabaseAdmin
+  .from("bookings")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "pending");
+
+const { count: pendingRoleRequestsCount } = await supabaseServer
+  .from("role_change_requests")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "pending");
+
+const { count: pendingChatsCount } = await supabaseServer
+  .from("conversations")
+  .select("id", { count: "exact", head: true })
+  .eq("status", "pending");
+
+const totalPending = (pendingRoleRequestsCount ?? 0) + (pendingBookingsCount ?? 0) + (pendingChatsCount ?? 0);
+---
+
+<BaseLayout title="Panel de administrador" description="Gestión general de medibook">
+
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+
+    <div class="flex items-center gap-4">
+      {avatarUrl ? (
+        <img src={avatarUrl} referrerpolicy="no-referrer" class="w-14 h-14 rounded-full object-cover shadow-md" alt={displayName} />
+      ) : (
+        <div class="w-14 h-14 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white font-bold text-lg shadow-md">
+          {displayName.charAt(0).toUpperCase()}
+        </div>
+      )}
+      <div>
+        <h1 class="text-2xl font-bold">Panel de administrador</h1>
+        <p class="text-sm text-slate-500">Hola, {displayName} · {user?.email}</p>
+      </div>
+    </div>
+
+    {totalPending > 0 && (
+      <div class="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30 p-4 text-sm text-amber-800 dark:text-amber-200">
+        📋 Hay {totalPending} cosa{totalPending !== 1 && "s"} pendiente{totalPending !== 1 && "s"} de que alguien las revise: reservas, solicitudes de rol y/o chats de ayuda.
+      </div>
+    )}
+
+    <!-- OVERVIEW -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+        <p class="text-xs text-slate-500">Usuarios</p>
+        <p class="text-2xl font-bold">{authUsers.length}</p>
+        <p class="text-xs text-green-500">{authUsers.filter(isOnline).length} activos ahora</p>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+        <p class="text-xs text-slate-500">Propiedades</p>
+        <p class="text-2xl font-bold">{listingsCount ?? 0}</p>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+        <p class="text-xs text-slate-500">Reservas totales</p>
+        <p class="text-2xl font-bold">{bookingsCount ?? 0}</p>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+        <p class="text-xs text-slate-500">Reservas pendientes</p>
+        <p class="text-2xl font-bold text-amber-500">{pendingBookingsCount ?? 0}</p>
+      </div>
+    </section>
+
+    <!-- ACCESOS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <a href="/admin/usuarios/" class="block rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-primary-400 transition">
+        <p class="font-semibold">👥 Usuarios</p>
+        <p class="text-sm text-slate-500 mt-1">Ver, editar y suspender cuentas.</p>
+      </a>
+      <a href="/admin/solicitudes-rol/" class="block rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-primary-400 transition">
+        <p class="font-semibold">🔁 Solicitudes de rol {pendingRoleRequestsCount ? `(${pendingRoleRequestsCount})` : ""}</p>
+        <p class="text-sm text-slate-500 mt-1">Aprobar o rechazar cambios de rol.</p>
+      </a>
+      <a href="/admin/reservas/" class="block rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-primary-400 transition">
+        <p class="font-semibold">📅 Todas las reservas</p>
+        <p class="text-sm text-slate-500 mt-1">Vista general de todo el sistema.</p>
+      </a>
+      <a href="/admin/chats/" class="block rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-primary-400 transition">
+        <p class="font-semibold">💬 Chats {pendingChatsCount ? `(${pendingChatsCount})` : ""}</p>
+        <p class="text-sm text-slate-500 mt-1">Solicitudes de ayuda y chats directos.</p>
+      </a>
+      <a href="/admin/ganancias/" class="block rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 hover:border-primary-400 transition">
+        <p class="font-semibold">💰 Ganancias</p>
+        <p class="text-sm text-slate-500 mt-1">Ingresos generales de la plataforma.</p>
+      </a>
+    </section>
+
+  </main>
+</div>
+
+</BaseLayout>

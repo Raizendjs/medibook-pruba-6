@@ -1,0 +1,38 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import RoleRequestForm from "../components/roles/RoleRequestForm";
+import { createSupabaseServerClient } from "../lib/supabase/server";
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData } = await supabaseServer.auth.getUser();
+const currentRole = Astro.locals.role ?? "usuario";
+
+const { data: requests } = await supabaseServer
+  .from("role_change_requests")
+  .select("id, requested_role, status, reason, admin_note, created_at")
+  .eq("user_id", userData.user!.id)
+  .order("created_at", { ascending: false });
+---
+
+<BaseLayout title="Solicitar cambio de rol" description="Solicita cambiar tu rol en medibook">
+  <br /><br />
+  <main class="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold text-black dark:text-white tracking-tight mb-2">
+      Cambiar de rol
+    </h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+      Los cambios de rol quedan pendientes hasta que un administrador los
+      apruebe.
+    </p>
+
+    <RoleRequestForm
+      client:load
+      currentRole={currentRole}
+      initialRequests={requests ?? []}
+    />
+  </main>
+</BaseLayout>

@@ -1,0 +1,84 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import BookingsList from "../../components/BookingsList";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData, error: userError } = await supabase.auth.getUser();
+
+if (userError || !userData.user) {
+  return Astro.redirect("/login/"); // ajusta si tu ruta de login se llama distinto
+}
+
+const { data: bookingsRaw, error } = await supabase
+  .from("bookings")
+  .select(
+    "id, check_in, check_out, start_time, end_time, guests, total_price, status, listings(id, title, city, country, currency, listing_images(url, order_index))"
+  )
+  .eq("user_id", userData.user.id)
+  .order("check_in", { ascending: true });
+
+function getCoverUrl(listing: any) {
+  if (!listing?.listing_images || listing.listing_images.length === 0) return null;
+  const sorted = [...listing.listing_images].sort(
+    (a: any, b: any) => a.order_index - b.order_index
+  );
+  return sorted[0].url;
+}
+
+const bookingIds = (bookingsRaw ?? []).map((b: any) => b.id);
+let reviewsByBooking: Record<string, { rating: number; comment: string | null }> = {};
+if (bookingIds.length > 0) {
+  const { data: reviewsData } = await supabase
+    .from("reviews")
+    .select("booking_id, rating, comment")
+    .in("booking_id", bookingIds);
+  reviewsByBooking = Object.fromEntries(
+    (reviewsData ?? []).map((r: any) => [r.booking_id, { rating: r.rating, comment: r.comment }])
+  );
+}
+
+const bookings = (bookingsRaw ?? []).map((b: any) => ({
+  id: b.id,
+  check_in: b.check_in,
+  check_out: b.check_out,
+  start_time: b.start_time,
+  end_time: b.end_time,
+  guests: b.guests,
+  total_price: b.total_price,
+  status: b.status,
+  myRating: reviewsByBooking[b.id]?.rating ?? null,
+  myRatingComment: reviewsByBooking[b.id]?.comment ?? null,
+  listing: {
+    id: b.listings.id,
+    title: b.listings.title,
+    city: b.listings.city,
+    country: b.listings.country,
+    currency: b.listings.currency,
+    coverUrl: getCoverUrl(b.listings),
+  },
+}));
+---
+
+<BaseLayout title="Mis reservas">
+
+  <br>
+  <br>
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold text-neutral-900 tracking-tight mb-6">
+      Mis reservas
+    </h1>
+
+    {error && (
+      <p class="text-sm text-[#FF385C]">
+        Hubo un error cargando tus reservas. Intenta de nuevo.
+      </p>
+    )}
+
+    {!error && <BookingsList client:load initialBookings={bookings} />}
+  </main>
+</BaseLayout>

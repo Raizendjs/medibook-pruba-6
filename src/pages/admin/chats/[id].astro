@@ -1,0 +1,81 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import ChatWindow from "../../../components/chat/ChatWindow";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const { id } = Astro.params;
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData } = await supabaseServer.auth.getUser();
+
+const { data: conversation } = await supabaseServer
+  .from("conversations")
+  .select("id, requester_id, admin_id, status")
+  .eq("id", id)
+  .single();
+
+if (!conversation) {
+  return Astro.redirect("/admin/chats/");
+}
+
+const { data: messages } = await supabaseServer
+  .from("messages")
+  .select("id, conversation_id, sender_id, body, created_at, read_at, attachment_path")
+  .eq("conversation_id", id)
+  .order("created_at", { ascending: true });
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+const { data: requesterUser } = await supabaseAdmin.auth.admin.getUserById(conversation.requester_id);
+const requesterName =
+  requesterUser?.user?.user_metadata?.full_name ||
+  requesterUser?.user?.user_metadata?.name ||
+  requesterUser?.user?.email ||
+  "Usuario";
+const requesterAvatar =
+  requesterUser?.user?.user_metadata?.avatar_url ||
+  requesterUser?.user?.user_metadata?.picture ||
+  null;
+---
+
+<BaseLayout title={`Chat con ${requesterName}`} description="Chat de soporte">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-4">
+    <div class="flex items-center justify-between">
+      <a href="/admin/chats/" class="text-sm text-slate-500 hover:underline">← Todos los chats</a>
+
+      {conversation.status === "active" && (
+        <form method="POST" action={`/api/chat/${conversation.id}/close/`}>
+          <button
+            type="submit"
+            class="text-xs font-medium text-red-500 hover:underline"
+          >
+            Cerrar conversación
+          </button>
+        </form>
+      )}
+    </div>
+
+    <ChatWindow
+      client:load
+      conversationId={conversation.id}
+      currentUserId={userData.user!.id}
+      otherPartyName={requesterName}
+      otherPartyAvatar={requesterAvatar}
+      isActive={conversation.status === "active"}
+      initialMessages={messages ?? []}
+    />
+  </main>
+</div>
+</BaseLayout>

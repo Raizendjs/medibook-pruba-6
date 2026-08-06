@@ -1,0 +1,51 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import CartPage from "../components/CartPage";
+import { createSupabaseServerClient } from "../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) return Astro.redirect("/login/");
+
+const { data: itemsRaw } = await supabase
+  .from("cart_items")
+  .select(
+    "id, check_in, check_out, start_time, end_time, guests, price_per_night, total_price, listings(id, title, city, country, currency, listing_images(url, order_index))"
+  )
+  .eq("user_id", userData.user.id)
+  .order("created_at", { ascending: false });
+
+function getCoverUrl(listing: any) {
+  if (!listing?.listing_images || listing.listing_images.length === 0) return null;
+  const sorted = [...listing.listing_images].sort((a: any, b: any) => a.order_index - b.order_index);
+  return sorted[0].url;
+}
+
+const items = (itemsRaw ?? []).map((i: any) => ({
+  id: i.id,
+  check_in: i.check_in,
+  check_out: i.check_out,
+  start_time: i.start_time,
+  end_time: i.end_time,
+  price_per_night: i.price_per_night,
+  total_price: i.total_price,
+  listing: {
+    id: i.listings.id,
+    title: i.listings.title,
+    city: i.listings.city,
+    country: i.listings.country,
+    currency: i.listings.currency,
+    coverUrl: getCoverUrl(i.listings),
+  },
+}));
+---
+
+<BaseLayout title="Tu carrito" description="Revisa tus reservas antes de pagar">
+  <br /><br />
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold text-black dark:text-white tracking-tight mb-6">
+      🛒 Tu carrito
+    </h1>
+    <CartPage client:load initialItems={items} />
+  </main>
+</BaseLayout>

@@ -1,0 +1,183 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) return Astro.redirect("/login/");
+const myId = userData.user.id;
+
+const { data: conversationsRaw } = await supabase
+  .from("conversations")
+  .select("id, requester_id, host_id, listing_id, created_at, listings(id, title)")
+  .eq("type", "booking")
+  .or(`requester_id.eq.${myId},host_id.eq.${myId}`)
+  .order("created_at", { ascending: false });
+
+const conversations = conversationsRaw ?? [];
+const conversationIds = conversations.map((c: any) => c.id);
+
+// Nombre/foto de la otra parte de cada chat (huésped ve al anfitrión, y viceversa)
+const otherPartyIds = [
+  ...new Set(
+    conversations.map((c: any) => (c.requester_id === myId ? c.host_id : c.requester_id))
+  ),
+];
+
+let profilesMap: Record<string, { full_name: string | null; avatar_url: string | null }> = {};
+if (otherPartyIds.length > 0) {
+  const { data: profilesData } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url")
+    .in("id", otherPartyIds);
+  profilesMap = Object.fromEntries(
+    (profilesData ?? []).map((p: any) => [p.id, { full_name: p.full_name, avatar_url: p.avatar_url }])
+  );
+
+  const missingIds = otherPartyIds.filter((id) => !profilesMap[id]?.full_name || !profilesMap[id]?.avatar_url);
+  if (missingIds.length > 0) {
+    const supabaseAdmin = createClient(
+      import.meta.env.PUBLIC_SUPABASE_URL!,
+      import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    await Promise.all(
+      missingIds.map(async (id) => {
+        const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+        const authUser = data?.user;
+        if (!authUser) return;
+        const fallbackAvatar = authUser.user_metadata?.avatar_url ?? authUser.user_metadata?.picture ?? null;
+        const fallbackName = authUser.email ? authUser.email.split("@")[0] : null;
+        profilesMap[id] = {
+          full_name: profilesMap[id]?.full_name ?? fallbackName,
+          avatar_url: profilesMap[id]?.avatar_url ?? fallbackAvatar,
+        };
+      })
+    );
+  }
+}
+
+// Foto de portada de cada propiedad
+const listingIds = [...new Set(conversations.map((c: any) => c.listing_id).filter(Boolean))];
+let coverByListing: Record<string, string> = {};
+if (listingIds.length > 0) {
+  const { data: imagesData } = await supabase
+    .from("listing_images")
+    .select("listing_id, url, order_index")
+    .in("listing_id", listingIds)
+    .order("order_index", { ascending: true });
+  for (const img of imagesData ?? []) {
+    if (!coverByListing[img.listing_id]) coverByListing[img.listing_id] = img.url;
+  }
+}
+
+// Último mensaje y no leídos de cada conversación, en una sola consulta.
+let lastMessageByConv: Record<string, { body: string; created_at: string; sender_id: string }> = {};
+let unreadByConv: Record<string, number> = {};
+if (conversationIds.length > 0) {
+  const { data: allMessages } = await supabase
+    .from("messages")
+    .select("conversation_id, sender_id, body, created_at, read_at, attachment_path")
+    .in("conversation_id", conversationIds)
+    .order("created_at", { ascending: true });
+
+  for (const m of allMessages ?? []) {
+    lastMessageByConv[m.conversation_id] = {
+      body: m.body || (m.attachment_path ? "📷 Foto" : ""),
+      created_at: m.created_at,
+      sender_id: m.sender_id,
+    };
+    if (m.sender_id !== myId && !m.read_at) {
+      unreadByConv[m.conversation_id] = (unreadByConv[m.conversation_id] ?? 0) + 1;
+    }
+  }
+}
+
+const items = conversations.map((c: any) => {
+  const otherPartyId = c.requester_id === myId ? c.host_id : c.requester_id;
+  const iAmHost = c.host_id === myId;
+  return {
+    id: c.id,
+    listingTitle: c.listings?.title ?? "Propiedad",
+    listingCover: coverByListing[c.listing_id] ?? null,
+    otherPartyName: profilesMap[otherPartyId]?.full_name ?? "Sin nombre",
+    otherPartyAvatar: profilesMap[otherPartyId]?.avatar_url ?? null,
+    roleLabel: iAmHost ? "Huésped" : "Anfitrión",
+    lastMessage: lastMessageByConv[c.id]?.body ?? null,
+    lastMessageAt: lastMessageByConv[c.id]?.created_at ?? c.created_at,
+    unread: unreadByConv[c.id] ?? 0,
+  };
+});
+
+items.sort((a: any, b: any) => (a.lastMessageAt < b.lastMessageAt ? 1 : -1));
+---
+
+<BaseLayout title="Mis chats">
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-28">
+    <h1 class="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight mb-1">Mis chats</h1>
+    <p class="text-sm text-neutral-500 dark:text-neutral-400 mb-6">
+      Conversaciones con anfitriones y huéspedes sobre tus reservas y propiedades.
+    </p>
+
+    {items.length === 0 ? (
+      <div class="text-center py-20">
+        <p class="text-neutral-900 dark:text-white font-semibold">Todavía no tienes chats</p>
+        <p class="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+          Cuando reserves un espacio o recibas una reserva, vas a poder escribirle a la otra
+          persona desde acá.
+        </p>
+      </div>
+    ) : (
+      <div class="space-y-2">
+        {items.map((item: any) => (
+          <a
+            href={`/mensajes/${item.id}/`}
+            class="flex items-center gap-3 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 hover:border-neutral-300 dark:hover:border-neutral-600 transition-colors"
+          >
+            <div class="relative shrink-0">
+              {item.otherPartyAvatar ? (
+                <img
+                  src={item.otherPartyAvatar}
+                  alt={item.otherPartyName}
+                  class="w-12 h-12 rounded-full object-cover"
+                />
+              ) : (
+                <div class="w-12 h-12 rounded-full bg-neutral-200 dark:bg-neutral-700 flex items-center justify-center font-semibold text-neutral-600 dark:text-neutral-200">
+                  {item.otherPartyName.charAt(0).toUpperCase()}
+                </div>
+              )}
+              {item.unread > 0 && (
+                <span class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-[10px] font-bold flex items-center justify-center">
+                  {item.unread > 9 ? "9+" : item.unread}
+                </span>
+              )}
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <p class={`text-sm truncate ${item.unread > 0 ? "font-bold text-neutral-900 dark:text-white" : "font-medium text-neutral-900 dark:text-white"}`}>
+                  {item.otherPartyName}
+                  <span class="font-normal text-neutral-400 dark:text-neutral-500"> · {item.roleLabel}</span>
+                </p>
+              </div>
+              <p class="text-xs text-neutral-500 dark:text-neutral-400 truncate">{item.listingTitle}</p>
+              {item.lastMessage && (
+                <p class={`text-sm truncate mt-0.5 ${item.unread > 0 ? "text-neutral-900 dark:text-white font-medium" : "text-neutral-500 dark:text-neutral-400"}`}>
+                  {item.lastMessage}
+                </p>
+              )}
+            </div>
+
+            {item.listingCover && (
+              <img
+                src={item.listingCover}
+                alt=""
+                class="w-14 h-14 rounded-xl object-cover shrink-0 hidden sm:block"
+              />
+            )}
+          </a>
+        ))}
+      </div>
+    )}
+  </main>
+</BaseLayout>

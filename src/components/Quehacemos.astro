@@ -1,0 +1,65 @@
+---
+const { descripcion, text1, text2, text3, text4, text5, text6, src } = Astro.props;
+---
+
+<section class="px-10 py-20 bg-dark border-white/10">
+  <div class="flex flex-col md:flex-row gap-10 xl:gap-16 items-stretch">
+
+    <!-- Left -->
+    <div class="md:w-5/12 lg:w-4/12 w-full flex flex-col justify-between">
+      <div>
+        <p class="text-brand text-xs font-bold tracking-widest uppercase mb-4 text-red-600">01 ——</p>
+        <h2 class="text-4xl md:text-5xl font-black uppercase dark:text-white leading-tight mb-6">
+          ¿QUÉ<br/>HACEMOS?
+        </h2>
+        <p class="dark:text-white/50 text-sm leading-relaxed mb-8">
+          {descripcion}
+        </p>
+      </div>
+      <ul class="flex flex-col gap-3">
+        {['Contenido 100% personalizado', 'Formatos modernos y escalables', 'Orientado a resultados medibles'].map((item) => (
+          <li class="flex items-center gap-3 text-sm dark:text-white/70">
+            <span class="w-5 h-5 shrink-0 rounded-full border border-red-600 flex items-center justify-center text-red-600 text-xs">✓</span>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <!-- Center: video -->
+    <div class="md:w-7/12 lg:w-5/12 w-full flex items-center">
+      <div class="w-full" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+        <iframe
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+          src={src}
+          title="YouTube video player"
+          frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen>
+        </iframe>
+      </div>
+    </div>
+
+    <!-- Right: feature list -->
+    <div class="hidden lg:flex lg:w-3/12 flex-col justify-center gap-4">
+      {[text1, text2, text3, text4, text5, text6].map((text) => (
+        <p class="dark:text-white/60 text-xs flex items-start gap-2 leading-relaxed">
+          <span class="text-red-600 mt-0.5 shrink-0">✓</span>
+          {text}
+        </p>
+      ))}
+    </div>
+
+  </div>
+
+  <!-- Feature list visible solo en mobile/tablet (cuando la col derecha está oculta) -->
+  <div class="flex lg:hidden flex-wrap gap-x-6 gap-y-3 mt-8">
+    {[text1, text2, text3, text4, text5, text6].map((text) => (
+      <p class="dark:text-white/60 text-xs flex items-start gap-2 leading-relaxed w-full sm:w-[calc(50%-12px)]">
+        <span class="text-red-600 mt-0.5 shrink-0">✓</span>
+        {text}
+      </p>
+    ))}
+  </div>
+</section>

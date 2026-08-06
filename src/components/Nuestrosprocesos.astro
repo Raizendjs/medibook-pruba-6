@@ -1,0 +1,101 @@
+---
+const { text1,desc1,text2,desc2,text3,desc3,text4,desc4,text5,desc5 } = Astro.props; 
+---
+
+<!-- ============================================================ -->
+<!-- SECCIÓN 5: NUESTRO PROCESO                                   -->
+<!-- ============================================================ -->
+<section class="px-6 md:px-10 py-16 md:py-20 bg-dark border-t border-white/10">
+  
+  <!-- Layout principal -->
+  <div class="flex flex-col md:flex-row md:items-start gap-8 md:gap-0 relative">
+
+    <!-- Título -->
+    <div class="flex flex-row md:flex-col items-center md:items-start gap-4 md:gap-0 md:min-w-[160px] md:pr-8 md:pt-2">
+      <p class="text-red-600 text-xs font-bold tracking-widest uppercase md:mb-3">03 ——</p>
+      <h2 class="text-3xl md:text-4xl font-black uppercase dark:text-white leading-tight">
+        NUESTRO<br /><span class="text-red-600">PROCESO</span>
+      </h2>
+    </div>
+
+    <!-- Separador — solo desktop -->
+    <div class="hidden md:block w-px bg-white/10 self-stretch mx-2"></div>
+
+    <!-- Steps -->
+    <div class="flex flex-col sm:flex-row sm:flex-wrap md:flex-nowrap md:flex-row md:items-start flex-1 relative">
+
+      <!-- Línea conectora — solo desktop -->
+      <div class="hidden md:block absolute top-8 left-[5%] right-[5%] h-px bg-white/10 z-0"></div>
+
+      <!-- Step 1 -->
+      <div class="flex-1 flex flex-row md:flex-col items-center md:items-center text-left md:text-center z-10 px-3 py-3 md:py-0 gap-4 md:gap-0 sm:basis-1/2 md:basis-auto">
+        <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-full bg-red-600 flex items-center justify-center text-white text-2xl md:mb-4 shadow-lg shadow-red-600/30">
+          📋
+        </div>
+        <div class="flex flex-col md:items-center">
+          <p class="dark:text-white/30 text-[10px] tracking-widest uppercase mb-1">01</p>
+          <p class="dark:text-white font-black text-xs uppercase tracking-wider mb-1 md:mb-2">{text1}</p>
+          <p class="dark:text-white/40 text-[11px] leading-relaxed">{desc1}</p>
+        </div>
+      </div>
+
+      <!-- Divisor mobile entre steps -->
+      <div class="md:hidden h-px bg-white/10 mx-3 sm:hidden"></div>
+
+      <!-- Step 2 -->
+      <div class="flex-1 flex flex-row md:flex-col items-center md:items-center text-left md:text-center z-10 px-3 py-3 md:py-0 gap-4 md:gap-0 sm:basis-1/2 md:basis-auto">
+        <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-full bg-blue-700 flex items-center justify-center text-white text-2xl md:mb-4 shadow-lg shadow-blue-700/30">
+          ✏️
+        </div>
+        <div class="flex flex-col md:items-center">
+          <p class="dark:text-white/30 text-[10px] tracking-widest uppercase mb-1">02</p>
+          <p class="dark:text-white font-black text-xs uppercase tracking-wider mb-1 md:mb-2">{text2}</p>
+          <p class="dark:text-white/40 text-[11px] leading-relaxed">{desc2}</p>
+        </div>
+      </div>
+
+      <div class="md:hidden h-px bg-white/10 mx-3 sm:hidden"></div>
+
+      <!-- Step 3 -->
+      <div class="flex-1 flex flex-row md:flex-col items-center md:items-center text-left md:text-center z-10 px-3 py-3 md:py-0 gap-4 md:gap-0 sm:basis-1/2 md:basis-auto">
+        <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-full bg-red-600 flex items-center justify-center text-white text-2xl md:mb-4 shadow-lg shadow-red-600/30">
+          🎬
+        </div>
+        <div class="flex flex-col md:items-center">
+          <p class="dark:text-white/30 text-[10px] tracking-widest uppercase mb-1">03</p>
+          <p class="dark:text-white font-black text-xs uppercase tracking-wider mb-1 md:mb-2">{text3}</p>
+          <p class="dark:text-white/40 text-[11px] leading-relaxed">{desc3}</p>
+        </div>
+      </div>
+
+      <div class="md:hidden h-px bg-white/10 mx-3 sm:hidden"></div>
+
+      <!-- Step 4 -->
+      <div class="flex-1 flex flex-row md:flex-col items-center md:items-center text-left md:text-center z-10 px-3 py-3 md:py-0 gap-4 md:gap-0 sm:basis-1/2 md:basis-auto">
+        <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl md:mb-4 shadow-lg shadow-blue-500/30">
+          🔍
+        </div>
+        <div class="flex flex-col md:items-center">
+          <p class="dark:text-white/30 text-[10px] tracking-widest uppercase mb-1">04</p>
+          <p class="dark:text-white font-black text-xs uppercase tracking-wider mb-1 md:mb-2">{text4}</p>
+          <p class="dark:text-white/40 text-[11px] leading-relaxed">{desc4}</p>
+        </div>
+      </div>
+
+      <div class="md:hidden h-px bg-white/10 mx-3 sm:hidden"></div>
+
+      <!-- Step 5 -->
+      <div class="flex-1 flex flex-row md:flex-col items-center md:items-center text-left md:text-center z-10 px-3 py-3 md:py-0 gap-4 md:gap-0 sm:basis-1/2 md:basis-auto">
+        <div class="w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-full bg-red-600 flex items-center justify-center text-white text-2xl md:mb-4 shadow-lg shadow-red-600/30">
+          🚀
+        </div>
+        <div class="flex flex-col md:items-center">
+          <p class="dark:text-white/30 text-[10px] tracking-widest uppercase mb-1">05</p>
+          <p class="dark:text-white font-black text-xs uppercase tracking-wider mb-1 md:mb-2">{text5}</p>
+          <p class="dark:text-white/40 text-[11px] leading-relaxed">{desc5}</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>

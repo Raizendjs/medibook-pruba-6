@@ -1,0 +1,50 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro"
+import Casosjs  from "../components/Casoscomp.astro"
+---
+
+  <style>
+
+    .ticker-track {
+      display: flex;
+      gap: 3rem;
+      animation: ticker 22s linear infinite;
+      white-space: nowrap;
+    }
+    @keyframes ticker {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    .case-card:hover .case-overlay { opacity: 1; }
+    .case-overlay { transition: opacity 0.35s ease; }
+
+    .filter-btn.active {
+      background-color: #E8192C;
+      color: #fff;
+      border-color: #E8192C;
+    }
+
+    /* Diagonal stripe accent */
+    .stripe-accent {
+      background: repeating-linear-gradient(
+        -55deg,
+        transparent,
+        transparent 6px,
+        rgba(232,25,44,0.08) 6px,
+        rgba(232,25,44,0.08) 12px
+      );
+    }
+  </style>
+
+
+<BaseLayout title="casos" description="Latest updates, thoughts, and tutorials from the Zenix team." >
+
+
+
+</BaseLayout>
+
+
+
+
+

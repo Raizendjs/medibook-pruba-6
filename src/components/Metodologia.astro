@@ -1,0 +1,235 @@
+
+
+<section class="metodo">
+  <div class="w-full rounded-lg bg-stone-100 dark:bg-gray-950 mb-20 reveal-on-scroll">
+
+    <!-- Encabezado -->
+    <div class="w-full p-6 md:p-10">
+      <span class="text-blue-700 text-lg md:text-2xl font-semibold uppercase">
+        Nuestra Metodología
+      </span>
+
+      <h2 class="text-3xl md:text-5xl lg:text-6xl mt-3 leading-tight">
+        De la estrategia al impacto.
+      </h2>
+    </div>
+
+    <!-- Slider -->
+    <div class="metodo-slider">
+
+      <!-- 01 -->
+      <div class="metodo-card">
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-5xl font-bold text-blue-600">01</span>
+
+          <div class="w-20 h-20 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
+            <img class="w-10 dark:invert" src="../../public/seach.svg" alt="">
+          </div>
+        </div>
+
+        <h4 class="font-bold text-3xl mb-4">Diagnóstico</h4>
+
+        <ul class="list-disc pl-5 space-y-2">
+          <li>Análisis de marca</li>
+          <li>Entorno</li>
+          <li>Audiencia</li>
+          <li>Competencia</li>
+        </ul>
+      </div>
+
+      <div class="metodo-arrow">
+        <img src="../../public/flecha.svg" alt="">
+      </div>
+
+      <!-- 02 -->
+      <div class="metodo-card">
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-5xl font-bold text-blue-600">02</span>
+
+          <div class="w-20 h-20 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
+            <img class="w-10 dark:invert" src="../../public/blanco.svg" alt="">
+          </div>
+        </div>
+
+        <h4 class="font-bold text-3xl mb-4">Estrategia</h4>
+
+        <ul class="list-disc pl-5 space-y-2">
+          <li>Plan de comunicación</li>
+          <li>Objetivos</li>
+          <li>Narrativa</li>
+          <li>Posicionamiento</li>
+        </ul>
+      </div>
+
+      <div class="metodo-arrow">
+        <img src="../../public/flecha.svg" alt="">
+      </div>
+
+      <!-- 03 -->
+      <div class="metodo-card">
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-5xl font-bold text-red-600">03</span>
+
+          <div class="w-20 h-20 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
+            <img class="w-10 dark:invert" src="../../public/video.svg" alt="">
+          </div>
+        </div>
+
+        <h4 class="font-bold text-3xl mb-4">Producción</h4>
+
+        <ul class="list-disc pl-5 space-y-2">
+          <li>Podcast</li>
+          <li>Videos</li>
+          <li>Coberturas</li>
+          <li>Documentales</li>
+        </ul>
+      </div>
+
+      <div class="metodo-arrow">
+        <img src="../../public/flecha.svg" alt="">
+      </div>
+
+      <!-- 04 -->
+      <div class="metodo-card">
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-5xl font-bold text-red-600">04</span>
+
+          <div class="w-20 h-20 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
+            <img class="w-10 dark:invert" src="../../public/antena.svg" alt="">
+          </div>
+        </div>
+
+        <h4 class="font-bold text-3xl mb-4">Distribución</h4>
+
+        <ul class="list-disc pl-5 space-y-2">
+          <li>Web</li>
+          <li>Radio</li>
+          <li>Redes</li>
+          <li>PR</li>
+        </ul>
+      </div>
+
+      <div class="metodo-arrow">
+        <img src="../../public/flecha.svg" alt="">
+      </div>
+
+      <!-- 05 -->
+      <div class="metodo-card">
+        <div class="flex items-center justify-between mb-6">
+          <span class="text-5xl font-bold text-blue-600">05</span>
+
+          <div class="w-20 h-20 bg-stone-100 dark:bg-stone-800 rounded-full flex items-center justify-center">
+            <img class="w-10 dark:invert" src="../../public/rank.svg" alt="">
+          </div>
+        </div>
+
+        <h4 class="font-bold text-3xl mb-4">Optimización</h4>
+
+        <ul class="list-disc pl-5 space-y-2">
+          <li>Métricas</li>
+          <li>Resultados</li>
+          <li>Mejora continua</li>
+        </ul>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<style>
+
+.metodo-slider{
+  display:grid;
+  grid-template-columns:
+    1fr auto
+    1fr auto
+    1fr auto
+    1fr auto
+    1fr;
+  gap:1rem;
+  align-items:center;
+  padding:2rem;
+}
+
+.metodo-card{
+  background:white;
+  border-radius:1rem;
+  padding:1.5rem;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+  transition:.3s;
+}
+
+.dark .metodo-card{
+  background:#1c1917;
+}
+
+.metodo-card:hover{
+  transform:translateY(-8px);
+}
+
+.metodo-arrow{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.metodo-arrow img{
+  width:42px;
+  animation:flecha 2s ease-in-out infinite;
+}
+
+@keyframes flecha{
+  0%,100%{
+    transform:translateX(0);
+  }
+  50%{
+    transform:translateX(10px);
+  }
+}
+
+@media (max-width:768px){
+
+  .metodo-slider{
+    display:flex;
+    overflow-x:auto;
+    gap:1rem;
+    padding:1rem;
+
+    scroll-snap-type:x mandatory;
+    scroll-behavior:smooth;
+
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+
+  .metodo-slider::-webkit-scrollbar{
+    display:none;
+  }
+
+  .metodo-card{
+    min-width:280px;
+    flex-shrink:0;
+    scroll-snap-align:center;
+  }
+
+  .metodo-arrow{
+    flex-shrink:0;
+  }
+
+  .metodo-arrow img{
+    width:28px;
+  }
+
+  .metodo h2{
+    font-size:2.5rem;
+    line-height:1.1;
+  }
+
+  .metodo h4{
+    font-size:1.75rem;
+  }
+
+}
+
+</style>

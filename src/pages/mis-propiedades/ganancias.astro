@@ -1,0 +1,89 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) return Astro.redirect("/login/");
+
+// Reservas de mis propiedades que ya tienen un pago aprobado ligado
+const { data: bookingsRaw } = await supabase
+  .from("bookings")
+  .select(
+    "id, check_in, total_price, status, listings!inner(id, title, host_id), payments!inner(id, status, currency, created_at)"
+  )
+  .eq("listings.host_id", userData.user.id)
+  .eq("payments.status", "approved")
+  .order("check_in", { ascending: false });
+
+const bookings = bookingsRaw ?? [];
+
+const totalGanancias = bookings.reduce((sum, b: any) => sum + Number(b.total_price), 0);
+const currency = (bookings[0] as any)?.payments?.currency ?? "USD";
+
+// Desglose por propiedad
+const byListing = new Map<string, { title: string; total: number; count: number }>();
+for (const b of bookings as any[]) {
+  const key = b.listings.id;
+  const prev = byListing.get(key) ?? { title: b.listings.title, total: 0, count: 0 };
+  prev.total += Number(b.total_price);
+  prev.count += 1;
+  byListing.set(key, prev);
+}
+---
+
+<BaseLayout title="Mis ganancias" description="Resumen de tus ingresos como anfitrión">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <div>
+      <a href="/mis-propiedades/" class="text-sm text-slate-500 hover:underline">← Mis propiedades</a>
+      <h1 class="text-2xl font-bold mt-2">💰 Mis ganancias</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Ingresos generados por reservas ya pagadas en tus propiedades.
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+      <p class="text-xs text-slate-500">Total generado</p>
+      <p class="text-3xl font-bold text-green-600 dark:text-green-400">{currency} {totalGanancias.toFixed(2)}</p>
+      <p class="text-xs text-slate-400 mt-1">{bookings.length} reserva{bookings.length !== 1 && "s"} pagada{bookings.length !== 1 && "s"}</p>
+    </div>
+
+    {byListing.size > 0 && (
+      <section>
+        <h2 class="text-lg font-bold mb-3">Por propiedad</h2>
+        <div class="space-y-2">
+          {[...byListing.entries()].map(([id, v]) => (
+            <div class="flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm">
+              <span>{v.title}</span>
+              <span class="font-semibold">{currency} {v.total.toFixed(2)} <span class="text-slate-400 font-normal">({v.count})</span></span>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section>
+      <h2 class="text-lg font-bold mb-3">Transacciones recientes</h2>
+      {bookings.length === 0 ? (
+        <p class="text-sm text-slate-500">Todavía no tienes reservas pagadas.</p>
+      ) : (
+        <div class="space-y-2">
+          {(bookings as any[]).map((b) => (
+            <div class="flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm">
+              <span>{b.listings.title} · {b.check_in}</span>
+              <span class="font-semibold text-green-600 dark:text-green-400">+{b.payments.currency} {b.total_price}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+
+    <p class="text-xs text-slate-400">
+      Nota: esto muestra los ingresos generados, no un saldo disponible para
+      retiro. La transferencia de fondos a tu cuenta se coordina aparte con
+      el administrador.
+    </p>
+  </main>
+</div>
+</BaseLayout>

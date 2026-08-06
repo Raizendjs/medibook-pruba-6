@@ -1,0 +1,56 @@
+.marcas {
+    padding: 1.5rem 0;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(20px);
+  }
+  
+  .titulo-marcas {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+  }
+  
+  .carousel-wrapper {
+    overflow: hidden;
+    width: 100%;
+  }
+  
+  .carousel-track {
+    display: flex;
+    align-items: center;
+    gap: 4rem;
+    width: max-content;
+    animation: scroll 25s linear infinite;
+  }
+  
+  .carousel-track:hover {
+    animation-play-state: paused;
+  }
+  
+  .logo {
+    height: 80px;
+    width: auto;
+    flex-shrink: 0;
+    display: block;
+  }
+  
+  @keyframes scroll {
+    from {
+      transform: translateX(0);
+    }
+  
+    to {
+      transform: translateX(-33.333%);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .logo {
+      height: 60px;
+    }
+  
+    .carousel-track {
+      gap: 2rem;
+      animation-duration: 18s;
+    }
+  }

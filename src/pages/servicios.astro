@@ -1,0 +1,439 @@
+---
+// ListingDetail.astro
+// Página interna de alojamiento — estilo Airbnb (galería, descripción, comodidades,
+// reseñas, ubicación y tarjeta de reserva sticky). Reemplaza `property` con los
+// datos reales de cada alojamiento (o pásalos como prop).
+import BaseLayout from "../layouts/BaseLayout.astro";
+const property = {
+  title: "Cabaña frente al lago con deck privado",
+  location: "Papallacta, Napo, Ecuador",
+  rating: 4.96,
+  reviewsCount: 132,
+  isSuperhost: true,
+  guests: 4,
+  bedrooms: 2,
+  beds: 3,
+  baths: 1,
+  price: 68,
+  cleaningFee: 12,
+  serviceFee: 9,
+  images: [
+    "https://picsum.photos/seed/listing-main/1200/900",
+    "https://picsum.photos/seed/listing-2/800/600",
+    "https://picsum.photos/seed/listing-3/800/600",
+    "https://picsum.photos/seed/listing-4/800/600",
+    "https://picsum.photos/seed/listing-5/800/600",
+    "https://picsum.photos/seed/listing-6/800/600",
+    "https://picsum.photos/seed/listing-7/800/600",
+  ],
+  host: {
+    name: "María Elena",
+    avatar: "https://i.pravatar.cc/150?img=47",
+    years: 6,
+    responseRate: 98,
+  },
+  highlights: [
+    {
+      title: "Espacio exclusivo",
+      text: "Tendrás la cabaña completa para ti solo.",
+      icon: "M4 21V7l8-4 8 4v14M4 21h16M9 21v-6h6v6",
+    },
+    {
+      title: "Ubicación excelente",
+      text: "El 95% de los huéspedes recientes calificó la ubicación con 5 estrellas.",
+      icon: "M12 2C8 2 5 5.2 5 9c0 5.3 7 13 7 13s7-7.7 7-13c0-3.8-3-7-7-7zM12 12a3 3 0 100-6 3 3 0 000 6z",
+    },
+    {
+      title: "Check-in autónomo",
+      text: "Entra a la cabaña con la caja de seguridad, sin contacto.",
+      icon: "M4 11V8a4 4 0 018 0v3M3 11h10v9H3zM7 15v2",
+    },
+  ],
+  description:
+    "Cabaña de madera junto al lago, rodeada de bosque andino y a pocos minutos de las aguas termales de Papallacta. Deck privado con vista al agua, chimenea a leña y cocina totalmente equipada. Ideal para desconectarte del ruido de la ciudad sin renunciar a las comodidades. El pueblo con restaurantes y balnearios está a 8 minutos en auto.",
+  amenities: [
+    { label: "Wifi", icon: "M2 8.5a16 16 0 0120 0M5.5 12a11 11 0 0113 0M9 15.5a6 6 0 016 0M12 19h.01" },
+    { label: "Cocina equipada", icon: "M4 21V7l8-4 8 4v14M4 21h16" },
+    { label: "Estacionamiento gratis", icon: "M6 3h8a5 5 0 010 10H8v8H6z" },
+    { label: "Chimenea", icon: "M12 2c2 3-1 4-1 6a3 3 0 106 0c0-1-1-2-1-3 2 2 3 5 3 8a7 7 0 11-14 0c0-4 3-7 7-11z" },
+    { label: "Vista al lago", icon: "M2 20c2-2 4-2 6 0s4 2 6 0 4-2 6 0M4 14l8-9 8 9" },
+    { label: "TV con cable", icon: "M4 5h16v11H4zM9 20h6M12 16v4" },
+    { label: "Secadora de pelo", icon: "M4 12a8 8 0 1116 0c0 3-2 4-2 7H6c0-3-2-4-2-7z" },
+    { label: "Detector de humo", icon: "M12 4a8 8 0 100 16 8 8 0 000-16zM12 8v4l3 2" },
+    { label: "Se admiten mascotas", icon: "M6 8a2 2 0 100-4 2 2 0 000 4zM18 8a2 2 0 100-4 2 2 0 000 4zM4 13a2 2 0 114 0 2 2 0 01-4 0zM16 13a2 2 0 114 0 2 2 0 01-4 0zM12 22c-3 0-5-2-5-4.5S9 14 12 14s5 1 5 3.5S15 22 12 22z" },
+  ],
+  reviewCategories: [
+    { label: "Limpieza", score: 4.9 },
+    { label: "Precisión", score: 4.9 },
+    { label: "Check-in", score: 5.0 },
+    { label: "Comunicación", score: 5.0 },
+    { label: "Ubicación", score: 4.8 },
+    { label: "Precio-calidad", score: 4.9 },
+  ],
+  reviews: [
+    {
+      name: "Andrés",
+      avatar: "https://i.pravatar.cc/150?img=12",
+      date: "junio 2026",
+      comment:
+        "Un lugar espectacular, mucho más lindo que en las fotos. El sonido del río al dormir es increíble y la chimenea salvó las noches frías. Volveríamos sin pensarlo.",
+    },
+    {
+      name: "Gabriela",
+      avatar: "https://i.pravatar.cc/150?img=32",
+      date: "mayo 2026",
+      comment:
+        "María Elena fue una anfitriona espectacular, muy pendiente de todo. La cabaña impecable y con todo lo necesario. El deck frente al lago es lo mejor de la estadía.",
+    },
+    {
+      name: "Luis",
+      avatar: "https://i.pravatar.cc/150?img=51",
+      date: "abril 2026",
+      comment:
+        "Excelente ubicación para ir a las termas caminando. La cabaña es acogedora y muy limpia. Solo recomendaría llevar ropa abrigada porque de noche baja bastante la temperatura.",
+    },
+    {
+      name: "Camila",
+      avatar: "https://i.pravatar.cc/150?img=44",
+      date: "abril 2026",
+      comment:
+        "Perfecta para desconectar. Wifi funcionó bien para hacer algo de trabajo remoto y las vistas al lago son un regalo apenas te levantas.",
+    },
+  ],
+};
+
+const nights = 3;
+const subtotal = property.price * nights;
+const total = subtotal + property.cleaningFee + property.serviceFee;
+---
+
+<BaseLayout title={property.title} description={`Alojamiento en ${property.location}. ${property.guests} huéspedes, ${property.bedrooms} habitaciones, ${property.beds} camas, ${property.baths} baños. Precio: $${property.price}/noche.`}>
+  
+
+    <br>
+    <br>
+    <article class="listing-detail mx-auto w-full  bg-white px-5 pb-28 pt-6 md:px-10 lg:px-0 lg:pb-16 dark:bg-[#0B1120]">
+        <!-- Encabezado -->
+        <header class="listing-header mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 class="text-[1.4rem] font-bold text-slate-900 md:text-[1.8rem] dark:text-white">
+              {property.title}
+            </h1>
+            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[0.85rem] text-slate-700 dark:text-slate-300">
+              <svg class="h-3.5 w-3.5 fill-slate-900 dark:fill-slate-200" viewBox="0 0 24 24">
+                <path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21.1 7 14.2 2 9.3l6.9-1L12 2z"/>
+              </svg>
+              <span class="font-semibold text-slate-900 dark:text-slate-100">{property.rating}</span>
+              <span>·</span>
+              <button class="underline underline-offset-2 hover:text-slate-900 dark:hover:text-white" data-scroll-to="reviews">
+                {property.reviewsCount} reseñas
+              </button>
+              <span>·</span>
+              <span class="underline underline-offset-2">{property.location}</span>
+            </div>
+          </div>
+      
+          <div class="flex gap-4 text-[0.82rem] font-semibold text-slate-700 dark:text-slate-200">
+            <button class="flex items-center gap-1.5 underline-offset-2 hover:underline">
+              <svg class="h-4 w-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24"><path d="M8 12l4-8 4 8M6 16l6 4 6-4M4 16l8-4 8 4"/></svg>
+              Compartir
+            </button>
+            <button id="saveBtn" class="flex items-center gap-1.5 underline-offset-2 hover:underline" data-fav="false">
+              <svg class="save-icon h-4 w-4 fill-transparent stroke-current stroke-[1.8]" viewBox="0 0 24 24">
+                <path d="M12 21s-7.5-4.6-10-9.1C.4 8.6 2 5 5.6 5c2 0 3.3 1 4.4 2.4C11.1 6 12.4 5 14.4 5 18 5 19.6 8.6 22 11.9 19.5 16.4 12 21 12 21z"/>
+              </svg>
+              Guardar
+            </button>
+          </div>
+        </header>
+      
+        <!-- Galería -->
+        <div class="gallery relative grid grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl">
+          <button class="gallery-item col-span-4 row-span-2 aspect-[4/3] md:col-span-2 md:aspect-auto" data-index="0">
+            <img src={property.images[0]} alt={property.title} class="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]" />
+          </button>
+          {property.images.slice(1, 5).map((img, i) => (
+            <button class:list={["gallery-item hidden aspect-square md:block", i === 1 ? "" : ""]} data-index={i + 1}>
+              <img src={img} alt={`${property.title} ${i + 2}`} class="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.03]" />
+            </button>
+          ))}
+          <button
+            id="showAllPhotos"
+            class="absolute bottom-4 right-4 hidden items-center gap-2 rounded-lg border border-slate-900 bg-white px-3.5 py-2 text-[0.78rem] font-semibold text-slate-900 shadow-sm hover:bg-slate-50 md:flex"
+          >
+            <svg class="h-4 w-4 fill-none stroke-current stroke-[1.8]" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+            Mostrar todas las fotos
+          </button>
+        </div>
+      
+        <!-- Cuerpo: contenido + tarjeta de reserva -->
+        <div class="mt-8 grid grid-cols-1 gap-x-14 lg:grid-cols-[1fr_360px]">
+          <div class="content min-w-0">
+            <!-- Resumen anfitrión -->
+            <section class="flex items-center justify-between border-b border-slate-200 pb-6 dark:border-slate-800">
+              <div>
+                <h2 class="text-[1.15rem] font-semibold text-slate-900 dark:text-white">
+                  Alojamiento de {property.host.name}
+                </h2>
+                <p class="mt-1 text-[0.85rem] text-slate-500 dark:text-slate-400">
+                  {property.guests} huéspedes · {property.bedrooms} habitaciones · {property.beds} camas · {property.baths} baño
+                </p>
+              </div>
+              <img src={property.host.avatar} alt={property.host.name} class="h-14 w-14 rounded-full object-cover" />
+            </section>
+      
+            <!-- Highlights -->
+            <section class="flex flex-col gap-5 border-b border-slate-200 py-6 dark:border-slate-800">
+              {property.highlights.map((h) => (
+                <div class="flex items-start gap-4">
+                  <svg class="mt-0.5 h-6 w-6 shrink-0 fill-none stroke-slate-800 stroke-[1.6] dark:stroke-slate-200" viewBox="0 0 24 24"><path d={h.icon} /></svg>
+                  <div>
+                    <p class="text-[0.92rem] font-semibold text-slate-900 dark:text-white">{h.title}</p>
+                    <p class="text-[0.82rem] text-slate-500 dark:text-slate-400">{h.text}</p>
+                  </div>
+                </div>
+              ))}
+            </section>
+      
+            <!-- Descripción -->
+            <section class="border-b border-slate-200 py-6 dark:border-slate-800">
+              <p id="descriptionText" class="description-clamp text-[0.92rem] leading-relaxed text-slate-700 dark:text-slate-300">
+                {property.description}
+              </p>
+              <button id="toggleDescription" class="mt-3 flex items-center gap-1 text-[0.85rem] font-semibold text-slate-900 underline underline-offset-2 dark:text-white">
+                Mostrar más
+              </button>
+            </section>
+      
+            <!-- Comodidades -->
+            <section class="border-b border-slate-200 py-6 dark:border-slate-800">
+              <h2 class="mb-4 text-[1.15rem] font-semibold text-slate-900 dark:text-white">Lo que ofrece este lugar</h2>
+              <div id="amenitiesList" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {property.amenities.map((a, i) => (
+                  <div class:list={["amenity-item flex items-center gap-3.5", i >= 6 ? "hidden" : ""]}>
+                    <svg class="h-5 w-5 fill-none stroke-slate-700 stroke-[1.6] dark:stroke-slate-300" viewBox="0 0 24 24"><path d={a.icon} /></svg>
+                    <span class="text-[0.88rem] text-slate-700 dark:text-slate-300">{a.label}</span>
+                  </div>
+                ))}
+              </div>
+              {property.amenities.length > 6 && (
+                <button id="toggleAmenities" class="mt-5 rounded-lg border border-slate-900 px-4 py-2.5 text-[0.85rem] font-semibold text-slate-900 hover:bg-slate-50 dark:border-slate-200 dark:text-white dark:hover:bg-slate-800">
+                  Mostrar las {property.amenities.length} comodidades
+                </button>
+              )}
+            </section>
+      
+            <!-- Reseñas -->
+            <section id="reviews" class="border-b border-slate-200 py-6 dark:border-slate-800">
+              <h2 class="mb-5 flex items-center gap-2 text-[1.15rem] font-semibold text-slate-900 dark:text-white">
+                <svg class="h-4.5 w-4.5 fill-slate-900 dark:fill-slate-200" viewBox="0 0 24 24"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21.1 7 14.2 2 9.3l6.9-1L12 2z"/></svg>
+                {property.rating} · {property.reviewsCount} reseñas
+              </h2>
+      
+              <div class="mb-8 grid grid-cols-2 gap-x-8 gap-y-3.5 sm:grid-cols-3">
+                {property.reviewCategories.map((c) => (
+                  <div>
+                    <div class="flex items-center justify-between text-[0.78rem] text-slate-700 dark:text-slate-300">
+                      <span>{c.label}</span>
+                      <span>{c.score}</span>
+                    </div>
+                    <div class="mt-1 h-[3px] w-full rounded-full bg-slate-200 dark:bg-slate-700">
+                      <div class="h-full rounded-full bg-slate-900 dark:bg-white" style={`width:${(c.score / 5) * 100}%`}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+      
+              <div class="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+                {property.reviews.map((r) => (
+                  <div class="review-card">
+                    <div class="flex items-center gap-3">
+                      <img src={r.avatar} alt={r.name} class="h-10 w-10 rounded-full object-cover" />
+                      <div>
+                        <p class="text-[0.88rem] font-semibold text-slate-900 dark:text-white">{r.name}</p>
+                        <p class="text-[0.72rem] text-slate-400">{r.date}</p>
+                      </div>
+                    </div>
+                    <p class="mt-2.5 line-clamp-4 text-[0.85rem] leading-relaxed text-slate-600 dark:text-slate-400">
+                      {r.comment}
+                    </p>
+                  </div>
+                ))}
+              </div>
+      
+              <button class="mt-7 rounded-lg border border-slate-900 px-4 py-2.5 text-[0.85rem] font-semibold text-slate-900 hover:bg-slate-50 dark:border-slate-200 dark:text-white dark:hover:bg-slate-800">
+                Mostrar las {property.reviewsCount} reseñas
+              </button>
+            </section>
+      
+            <!-- Ubicación -->
+            <section class="py-6">
+              <h2 class="mb-4 text-[1.15rem] font-semibold text-slate-900 dark:text-white">Dónde vas a estar</h2>
+              <div class="flex h-56 w-full items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+                <span class="text-[0.85rem] text-slate-400">Mapa de {property.location}</span>
+              </div>
+              <p class="mt-3 text-[0.85rem] text-slate-600 dark:text-slate-400">{property.location}</p>
+            </section>
+          </div>
+      
+          <!-- Tarjeta de reserva -->
+          <aside class="booking-card-wrap hidden lg:block">
+            <div class="sticky top-24 rounded-2xl border border-slate-200 p-5 shadow-lg shadow-black/5 dark:border-slate-700">
+              <div class="flex items-baseline gap-1">
+                <span class="text-[1.15rem] font-semibold text-slate-900 dark:text-white">${property.price}</span>
+                <span class="text-[0.85rem] text-slate-500 dark:text-slate-400">noche</span>
+              </div>
+              <div class="mt-1 flex items-center gap-1 text-[0.8rem] text-slate-700 dark:text-slate-300">
+                <svg class="h-3 w-3 fill-slate-900 dark:fill-slate-200" viewBox="0 0 24 24"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21.1 7 14.2 2 9.3l6.9-1L12 2z"/></svg>
+                {property.rating} · {property.reviewsCount} reseñas
+              </div>
+      
+              <div class="mt-4 overflow-hidden rounded-xl border border-slate-300 dark:border-slate-600">
+                <div class="grid grid-cols-2 divide-x divide-slate-300 dark:divide-slate-600">
+                  <div class="px-3 py-2">
+                    <label class="block text-[0.62rem] font-semibold uppercase text-slate-700 dark:text-slate-300">Llegada</label>
+                    <input type="date" class="w-full border-0 bg-transparent p-0 text-[0.8rem] text-slate-700 focus:outline-none focus:ring-0 dark:text-slate-200 [color-scheme:light] dark:[color-scheme:dark]" />
+                  </div>
+                  <div class="px-3 py-2">
+                    <label class="block text-[0.62rem] font-semibold uppercase text-slate-700 dark:text-slate-300">Salida</label>
+                    <input type="date" class="w-full border-0 bg-transparent p-0 text-[0.8rem] text-slate-700 focus:outline-none focus:ring-0 dark:text-slate-200 [color-scheme:light] dark:[color-scheme:dark]" />
+                  </div>
+                </div>
+                <div class="border-t border-slate-300 px-3 py-2 dark:border-slate-600">
+                  <label class="block text-[0.62rem] font-semibold uppercase text-slate-700 dark:text-slate-300">Huéspedes</label>
+                  <select class="w-full border-0 bg-transparent p-0 text-[0.8rem] text-slate-700 focus:outline-none focus:ring-0 dark:text-slate-200">
+                    {Array.from({ length: property.guests }, (_, i) => i + 1).map((n) => (
+                      <option value={n}>{n} huésped{n > 1 ? "es" : ""}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+      
+              <button class="mt-4 w-full rounded-full bg-[#E85D4E] py-3 text-[0.92rem] font-semibold text-white transition-transform duration-150 hover:scale-[1.02] hover:bg-[#C6482F]">
+                Reservar
+              </button>
+              <p class="mt-3 text-center text-[0.78rem] text-slate-400">No se te cobrará todavía</p>
+      
+              <div class="mt-5 space-y-2.5 text-[0.85rem] text-slate-700 dark:text-slate-300">
+                <div class="flex justify-between">
+                  <span class="underline underline-offset-2">${property.price} x {nights} noches</span>
+                  <span>${subtotal}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="underline underline-offset-2">Tarifa de limpieza</span>
+                  <span>${property.cleaningFee}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="underline underline-offset-2">Tarifa de servicio</span>
+                  <span>${property.serviceFee}</span>
+                </div>
+              </div>
+              <div class="mt-4 flex justify-between border-t border-slate-200 pt-4 text-[0.92rem] font-semibold text-slate-900 dark:border-slate-700 dark:text-white">
+                <span>Total</span>
+                <span>${total}</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      
+        <!-- Barra fija inferior (mobile) -->
+        <div class="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between border-t border-slate-200 bg-white px-5 py-3.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] lg:hidden dark:border-slate-800 dark:bg-slate-900">
+          <div>
+            <p class="text-[0.98rem] font-semibold text-slate-900 dark:text-white">
+              ${property.price} <span class="text-[0.8rem] font-normal text-slate-500 dark:text-slate-400">noche</span>
+            </p>
+            <p class="text-[0.75rem] underline text-slate-600 dark:text-slate-300">{property.rating} · {property.reviewsCount} reseñas</p>
+          </div>
+          <button class="rounded-full bg-[#E85D4E] px-6 py-3 text-[0.85rem] font-semibold text-white hover:bg-[#C6482F]">
+            Reservar
+          </button>
+        </div>
+      
+        <!-- Lightbox de galería -->
+        <div id="lightbox" class="fixed inset-0 z-50 hidden bg-white p-4 md:p-8 overflow-y-auto dark:bg-slate-950">
+          <button id="closeLightbox" class="sticky top-0 mb-4 flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
+            &#10005;
+          </button>
+          <div class="mx-auto flex max-w-3xl flex-col gap-4">
+            {property.images.map((img, i) => (
+              <img src={img} alt={`${property.title} ${i + 1}`} class="w-full rounded-xl object-cover" />
+            ))}
+          </div>
+        </div>
+      </article>
+
+    </BaseLayout>
+
+<script>
+  function initListingDetail() {
+    const root = document.querySelector<HTMLElement>(".listing-detail");
+    if (!root) return;
+
+    // Guardar / favorito
+    const saveBtn = root.querySelector<HTMLButtonElement>("#saveBtn");
+    saveBtn?.addEventListener("click", () => {
+      const isFav = saveBtn.dataset.fav === "true";
+      saveBtn.dataset.fav = String(!isFav);
+      saveBtn.querySelector(".save-icon")?.classList.toggle("fill-[#E85D4E]", !isFav);
+      saveBtn.querySelector(".save-icon")?.classList.toggle("stroke-[#E85D4E]", !isFav);
+    });
+
+    // Descripción: mostrar más / menos
+    const descText = root.querySelector<HTMLElement>("#descriptionText");
+    const descBtn = root.querySelector<HTMLButtonElement>("#toggleDescription");
+    descBtn?.addEventListener("click", () => {
+      const expanded = descText?.classList.toggle("description-expanded");
+      descBtn.textContent = expanded ? "Mostrar menos" : "Mostrar más";
+    });
+
+    // Comodidades: mostrar todas
+    const amenityItems = root.querySelectorAll<HTMLElement>(".amenity-item");
+    const amenitiesBtn = root.querySelector<HTMLButtonElement>("#toggleAmenities");
+    amenitiesBtn?.addEventListener("click", () => {
+      const isHidden = amenitiesBtn.dataset.open !== "true";
+      amenityItems.forEach((el) => el.classList.toggle("hidden", !isHidden ? true : false));
+      amenitiesBtn.dataset.open = String(isHidden);
+      amenitiesBtn.textContent = isHidden ? "Mostrar menos" : `Mostrar las ${amenityItems.length} comodidades`;
+    });
+
+    // Lightbox de galería
+    const lightbox = root.parentElement?.querySelector<HTMLElement>("#lightbox") || document.querySelector<HTMLElement>("#lightbox");
+    const openBtns = root.querySelectorAll<HTMLButtonElement>(".gallery-item, #showAllPhotos");
+    const closeBtn = document.querySelector<HTMLButtonElement>("#closeLightbox");
+
+    openBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        lightbox?.classList.remove("hidden");
+        document.body.style.overflow = "hidden";
+      });
+    });
+    closeBtn?.addEventListener("click", () => {
+      lightbox?.classList.add("hidden");
+      document.body.style.overflow = "";
+    });
+
+    // Scroll suave a reseñas
+    root.querySelectorAll<HTMLElement>("[data-scroll-to]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const target = document.getElementById(el.dataset.scrollTo || "");
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+  }
+
+  document.addEventListener("astro:page-load", initListingDetail);
+</script>
+
+<style>
+  .description-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .description-clamp.description-expanded {
+    -webkit-line-clamp: unset;
+    display: block;
+    overflow: visible;
+  }
+</style>

@@ -1,0 +1,355 @@
+---
+// CtaSection.astro
+// Seccion de llamado a la accion ("Hablemos de tu proyecto") con animaciones GSAP:
+// entrada orquestada al llegar al viewport + capas de fondo en loop continuo
+// (zoom Ken Burns en la imagen, halo que respira, particulas ascendiendo,
+// linea de pulso bajo el titulo).
+---
+
+<section class="cta-section">
+    <div class="cta-card" id="cta-card">
+  
+      <!-- Fondo: imagen + degradado. Reemplaza la ruta por tu imagen real -->
+      <div class="cta-bg" id="cta-bg" style="background-image: linear-gradient(to right, rgba(10,10,11,0.95) 0%, rgba(10,10,11,0.85) 38%, rgba(10,10,11,0.15) 75%), url('/hablemos.webp');"></div>
+  
+      <!-- Halo de acento, respira y se desplaza lentamente -->
+      <div class="cta-halo" id="cta-halo"></div>
+  
+      <!-- Particulas ascendiendo, generadas por JS -->
+      <div class="cta-particles" id="cta-particles" aria-hidden="true"></div>
+  
+      <div class="cta-content">
+        <div class="cta-text-wrap">
+  
+          <span class="cta-eyebrow" id="cta-eyebrow">
+            <span class="cta-dot"></span>
+            Comunicación estratégica
+          </span>
+  
+          <div class="cta-title-mask">
+            <h2 class="text-white cta-title" id="cta-title">
+              Si tu empresa no comunica estratégicamente, está perdiendo
+              <span class="cta-accent">oportunidades</span> todos los días.
+            </h2>
+          </div>
+  
+          <div class="cta-pulse-line" id="cta-pulse-line"></div>
+  
+          <button class="cta-btn" id="cta-btn">
+            <span>Hablemos de tu proyecto</span>
+            <svg
+              id="cta-arrow"
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
+          </button>
+  
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <style>
+    .cta-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 0 40px;
+    }
+  
+    .cta-card {
+      position: relative;
+      width: 91.666667%;
+      min-height: 420px;
+      border-radius: 1rem;
+      overflow: hidden;
+      border: 2px solid #e7e5e4;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+    }
+  
+    :global(.dark) .cta-card {
+      border-color: #1c1917;
+    }
+  
+    .cta-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center left;
+      background-repeat: no-repeat;
+      transform: scale(1.08);
+      z-index: 0;
+    }
+  
+    .cta-halo {
+      position: absolute;
+      top: -140px;
+      left: -80px;
+      width: 520px;
+      height: 520px;
+      border-radius: 999px;
+      background: radial-gradient(
+        circle,
+        rgba(185, 28, 28, 0.3) 0%,
+        rgba(185, 28, 28, 0.08) 45%,
+        transparent 70%
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+  
+    .cta-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+  
+    .cta-particle {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 999px;
+      background: #ef4444;
+      opacity: 0.35;
+    }
+  
+    .cta-content {
+      position: relative;
+      z-index: 3;
+      width: 100%;
+      padding: 48px 24px;
+    }
+  
+    @media (min-width: 768px) {
+      .cta-content {
+        padding: 56px 40px;
+      }
+    }
+  
+    .cta-text-wrap {
+      max-width: 560px;
+    }
+  
+    .cta-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #f87171;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+  
+    .cta-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #ef4444;
+      display: inline-block;
+    }
+  
+    .cta-title-mask {
+      overflow: hidden;
+      margin-top: 14px;
+    }
+  
+    .cta-title {
+      font-size: clamp(1.5rem, 4vw, 2.25rem);
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      
+      font-weight: 600;
+    }
+  
+  
+    .cta-accent {
+      color: #b91c1c;
+    }
+  
+    .cta-pulse-line {
+      height: 2px;
+      width: 80px;
+      background: #b91c1c;
+      margin-top: 22px;
+      transform-origin: left;
+      opacity: 0;
+    }
+  
+    .cta-btn {
+      margin-top: 26px;
+      padding: 16px 28px;
+      background: #b91c1c;
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+  
+    .cta-btn:hover {
+      background: #991b1b;
+    }
+  
+    @media (max-width: 640px) {
+      .cta-title {
+        font-size: 1.375rem;
+      }
+  
+      .cta-btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+  
+  <script>
+    import { gsap } from "gsap";
+    import { ScrollTrigger } from "gsap/ScrollTrigger";
+  
+    gsap.registerPlugin(ScrollTrigger);
+  
+    function initCtaSection() {
+      const card = document.getElementById("cta-card");
+      if (!card || card.dataset.initialized === "true") return;
+      card.dataset.initialized = "true";
+  
+      const bg = document.getElementById("cta-bg");
+      const halo = document.getElementById("cta-halo");
+      const eyebrow = document.getElementById("cta-eyebrow");
+      const titleMask = card.querySelector(".cta-title-mask");
+      const pulseLine = document.getElementById("cta-pulse-line");
+      const btn = document.getElementById("cta-btn");
+      const arrow = document.getElementById("cta-arrow");
+      const particlesWrap = document.getElementById("cta-particles");
+  
+      // Generar particulas que flotaran hacia arriba en loop
+      const PARTICLE_COUNT = 16;
+      const particles: HTMLElement[] = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const dot = document.createElement("span");
+        dot.className = "cta-particle";
+        dot.style.left = `${(i * 6.1) % 100}%`;
+        dot.style.bottom = `${(i * 13) % 90}%`;
+        particlesWrap?.appendChild(dot);
+        particles.push(dot);
+      }
+  
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+  
+      // --- Entrance, triggered once when the section enters the viewport ---
+      const ctx = gsap.context(() => {
+        gsap.set(card, { opacity: 0, y: 30 });
+        gsap.set(halo, { opacity: 0, scale: 0.7 });
+        gsap.set(eyebrow, { opacity: 0 });
+        gsap.set(titleMask.querySelector("h2"), { clipPath: "inset(0 100% 0 0)" });
+        gsap.set(btn, { opacity: 0, y: 14, scale: 0.92 });
+        gsap.set(particles, { opacity: 0 });
+  
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: card,
+            start: "top 75%",
+            once: true,
+          },
+        });
+  
+        tl.to(card, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" })
+          .to(halo, { opacity: 1, scale: 1, duration: 1.2, ease: "power2.out" }, "-=0.4")
+          .to(eyebrow, { opacity: 1, duration: 0.4 }, "-=0.6")
+          .to(
+            titleMask.querySelector("h2"),
+            { clipPath: "inset(0 0% 0 0)", duration: 0.9, ease: "power3.inOut" },
+            "-=0.3"
+          )
+          .to(pulseLine, { opacity: 1, scaleX: 1, duration: 0.5, ease: "power2.out" }, "-=0.3")
+          .to(btn, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.7)" }, "-=0.2")
+          .to(particles, { opacity: 1, duration: 0.6, stagger: 0.06 }, "-=0.3");
+  
+        // --- Ambient background loops, independent of the entrance ---
+        if (!prefersReducedMotion) {
+          gsap.to(bg, {
+            scale: 1.16,
+            duration: 14,
+            ease: "sine.inOut",
+            repeat: -1,
+            yoyo: true,
+          });
+  
+          gsap.to(halo, {
+            x: 30,
+            y: 20,
+            scale: 1.1,
+            duration: 5,
+            ease: "sine.inOut",
+            repeat: -1,
+            yoyo: true,
+          });
+  
+          gsap.to(pulseLine, {
+            scaleX: 1.4,
+            opacity: 0.5,
+            duration: 1.1,
+            ease: "sine.inOut",
+            repeat: -1,
+            yoyo: true,
+            delay: 2,
+          });
+  
+          particles.forEach((dot, i) => {
+            gsap.to(dot, {
+              y: "-=110",
+              x: `+=${gsap.utils.random(-15, 15)}`,
+              duration: gsap.utils.random(6, 11),
+              ease: "none",
+              repeat: -1,
+              delay: i * 0.5,
+              modifiers: {
+                y: gsap.utils.unitize((v) => parseFloat(v) % 300, "px"),
+              },
+            });
+            gsap.to(dot, {
+              opacity: gsap.utils.random(0.15, 0.6),
+              duration: gsap.utils.random(1.5, 3),
+              ease: "sine.inOut",
+              repeat: -1,
+              yoyo: true,
+            });
+          });
+        }
+      }, card);
+  
+      // Button hover: nudge the arrow forward
+      btn?.addEventListener("mouseenter", () => {
+        gsap.to(arrow, { x: 4, duration: 0.25, ease: "power2.out" });
+      });
+      btn?.addEventListener("mouseleave", () => {
+        gsap.to(arrow, { x: 0, duration: 0.25, ease: "power2.out" });
+      });
+    }
+  
+    // Astro puede navegar via View Transitions; re-inicializar en cada llegada de pagina
+    document.addEventListener("astro:page-load", initCtaSection);
+  </script>

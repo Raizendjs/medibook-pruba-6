@@ -1,0 +1,649 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import BookingWidget from "../../components/BookingWidget";
+import ListingCard from "../../components/ListingCard.astro";
+import { StarRatingDisplay } from "../../components/StarRating";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+
+const { id } = Astro.params;
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: listing, error } = await supabase
+  .from("listings")
+  .select("*, listing_images(url, order_index)")
+  .eq("id", id)
+  .eq("status", "active")
+  .single();
+
+if (error || !listing) {
+  return Astro.redirect("/listings");
+}
+
+const images = (listing.listing_images ?? []).sort(
+  (a: any, b: any) => a.order_index - b.order_index
+);
+
+// Lista plana de URLs para alimentar el pop-up (photo tour + lightbox)
+const imageUrls = images.map((img: any) => img.url);
+
+// Anfitrión (perfil público, visible porque la propiedad está activa)
+const { data: host } = await supabase
+  .from("profiles")
+  .select("id, full_name, avatar_url, created_at, clinic_type, consultorios_count")
+  .eq("id", listing.host_id)
+  .maybeSingle();
+
+const hostSinceYear = host?.created_at
+  ? new Date(host.created_at).getFullYear()
+  : null;
+
+// Si el anfitrión tiene suscripción mensual activa, sus clientes pagan
+// 10% menos (beneficio de la suscripción).
+const { data: hostSubscription } = await supabase
+  .from("subscriptions")
+  .select("plan, current_period_end")
+  .eq("host_id", listing.host_id)
+  .maybeSingle();
+
+const hasActiveDiscount =
+  hostSubscription?.plan === "monthly" &&
+  hostSubscription.current_period_end &&
+  new Date(hostSubscription.current_period_end).getTime() > Date.now();
+
+const effectivePrice = hasActiveDiscount
+  ? Math.round(listing.price * 0.9 * 100) / 100
+  : listing.price;
+
+// Reseñas de esta propiedad
+const { data: reviews } = await supabase
+  .from("reviews")
+  .select("rating")
+  .eq("listing_id", listing.id);
+
+const reviewCount = reviews?.length ?? 0;
+const avgRating = reviewCount > 0
+  ? (reviews as any[]).reduce((sum, r) => sum + r.rating, 0) / reviewCount
+  : null;
+
+// Alojamientos cercanos (misma lógica de distancia que en /listings)
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+let nearbyListings: any[] = [];
+
+if (listing.lat != null && listing.lng != null) {
+  const { data: candidates } = await supabase
+    .from("listings")
+    .select("id, title, price, currency, city, country, lat, lng, listing_images(url, order_index)")
+    .eq("status", "active")
+    .neq("id", listing.id)
+    .not("lat", "is", null)
+    .not("lng", "is", null)
+    .limit(30);
+
+  const { data: nearbyReviews } = await supabase
+    .from("reviews")
+    .select("listing_id, rating")
+    .in("listing_id", (candidates ?? []).map((c: any) => c.id));
+
+  const ratingsMap: Record<string, { avg: number; count: number }> = {};
+  (nearbyReviews ?? []).forEach((r: any) => {
+    const b = ratingsMap[r.listing_id] ?? { avg: 0, count: 0 };
+    b.avg = (b.avg * b.count + r.rating) / (b.count + 1);
+    b.count += 1;
+    ratingsMap[r.listing_id] = b;
+  });
+
+  nearbyListings = (candidates ?? [])
+    .map((c: any) => {
+      const sortedImgs = [...(c.listing_images ?? [])].sort(
+        (a: any, b: any) => a.order_index - b.order_index
+      );
+      return {
+        ...c,
+        coverUrl: sortedImgs[0]?.url ?? null,
+        distanceKm: distanceKm(listing.lat, listing.lng, c.lat, c.lng),
+        rating: ratingsMap[c.id]?.avg ?? null,
+        reviewCount: ratingsMap[c.id]?.count ?? 0,
+      };
+    })
+    .sort((a: any, b: any) => a.distanceKm - b.distanceKm)
+    .slice(0, 6);
+}
+---
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+  /* Mapa estilo Airbnb: controles discretos, sin sombras pesadas */
+  #location-map {
+    background: #f5f5f5;
+  }
+  #location-map .leaflet-control-zoom {
+    border: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+  #location-map .leaflet-control-zoom a {
+    color: #111827;
+  }
+  #location-map .leaflet-control-attribution {
+    font-size: 10px;
+    background: rgba(255, 255, 255, 0.7);
+  }
+</style>
+
+<BaseLayout title={listing.title}>
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+    <a href="/listings" class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors dark:text-neutral-400 dark:hover:text-white">
+      ← Volver a explorar
+    </a>
+
+    <h1 class="text-2xl sm:text-3xl font-bold text-neutral-900 tracking-tight mt-3 dark:text-white">
+      {listing.title}
+    </h1>
+    <div class="flex items-center gap-2 flex-wrap mt-2">
+      {avgRating ? (
+        <StarRatingDisplay rating={avgRating} count={reviewCount} size="sm" />
+      ) : (
+        <span class="text-neutral-900 font-medium dark:text-white">✦ Nuevo</span>
+      )}
+      <span class="text-neutral-300 dark:text-neutral-600">·</span>
+      <span class="text-neutral-500 dark:text-neutral-400">{listing.city ? `${listing.city}, ${listing.country}` : listing.country}</span>
+    </div>
+
+
+    <!-- Galería -->
+    <div class="mt-6 relative" id="gallery-root">
+      {images.length === 0 && (
+        <div class="aspect-[16/9] w-full rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-400 dark:bg-neutral-800 dark:text-neutral-500">
+          Sin fotos
+        </div>
+      )}
+
+      {images.length === 1 && (
+        <button
+          type="button"
+          class="block w-full"
+          data-action="open-lightbox"
+          data-index="0"
+          aria-label="Ver foto en pantalla completa"
+        >
+          <img
+            src={images[0].url}
+            alt={listing.title}
+            class="aspect-[16/9] w-full object-cover rounded-2xl pointer-events-none"
+          />
+        </button>
+      )}
+
+      {images.length > 1 && (
+        <div class="grid grid-cols-4 grid-rows-2 gap-2 h-[420px] rounded-2xl overflow-hidden">
+          <button
+            type="button"
+            class="col-span-2 row-span-2 w-full h-full"
+            data-action="open-lightbox"
+            data-index="0"
+            aria-label="Ver foto en pantalla completa"
+          >
+            <img
+              src={images[0].url}
+              alt={listing.title}
+              class="w-full h-full object-cover hover:brightness-95 transition pointer-events-none"
+            />
+          </button>
+          {images.slice(1, 5).map((img: any, i: number) => (
+            <button
+              type="button"
+              class="col-span-1 row-span-1 w-full h-full"
+              data-action="open-lightbox"
+              data-index={i + 1}
+              aria-label="Ver foto en pantalla completa"
+            >
+              <img
+                src={img.url}
+                alt={listing.title}
+                class="w-full h-full object-cover hover:brightness-95 transition pointer-events-none"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {images.length > 1 && (
+        <button
+          type="button"
+          data-action="open-photo-tour"
+          class="absolute bottom-4 right-4 flex items-center gap-2 bg-white text-neutral-900 text-sm font-semibold px-4 py-2 rounded-lg border border-neutral-900 shadow-sm hover:bg-neutral-100 transition-colors dark:bg-neutral-900 dark:text-white dark:border-white dark:hover:bg-neutral-800"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          Mostrar todas las fotos
+        </button>
+      )}
+    </div>
+
+    <!-- Contenido + widget de reserva -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-10">
+      <div class="lg:col-span-2 space-y-6">
+        <div class="pb-6 border-b border-neutral-200 flex items-center justify-between gap-4 dark:border-neutral-700">
+          <p class="font-semibold text-neutral-900 dark:text-white">
+            {host?.clinic_type
+              ? `Clínica ${host.clinic_type === "dental" ? "dental" : "médica"}${host.consultorios_count ? ` · ${host.consultorios_count} consultorio${host.consultorios_count === 1 ? "" : "s"} disponibles` : ""}`
+              : "Espacio médico"}
+          </p>
+
+          {host && (
+            <a href={`/perfil/${listing.host_id}/`} class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <div class="text-right hidden sm:block">
+                <p class="text-sm font-semibold text-neutral-900 dark:text-white hover:underline">
+                  Anfitrión: {host.full_name ?? "Sin nombre"}
+                </p>
+                {hasActiveDiscount && (
+                  <p class="text-xs text-primary-600 font-medium">🌟 Plan Premium · 10% de descuento</p>
+                )}
+                {hostSinceYear && (
+                  <p class="text-xs text-neutral-500 dark:text-neutral-400">{hostSinceYear === new Date().getFullYear() ? "Nuevo anfitrión" : `Anfitrión desde ${hostSinceYear}`}</p>
+                )}
+              </div>
+              {host.avatar_url ? (
+                <img
+                  src={host.avatar_url}
+                  referrerpolicy="no-referrer"
+                  alt={host.full_name ?? "Anfitrión"}
+                  class="w-12 h-12 rounded-full object-cover ring-1 ring-neutral-200 dark:ring-neutral-700"
+                />
+              ) : (
+                <div class="w-12 h-12 rounded-full bg-neutral-900 text-white flex items-center justify-center font-semibold dark:bg-neutral-700">
+                  {(host.full_name ?? "?").charAt(0).toUpperCase()}
+                </div>
+              )}
+            </a>
+          )}
+        </div>
+
+        {listing.description && (
+          <div>
+            <h2 class="font-semibold text-neutral-900 mb-2 dark:text-white">Sobre este lugar</h2>
+            <p class="text-neutral-700 whitespace-pre-line leading-relaxed dark:text-neutral-300">
+              {listing.description}
+            </p>
+          </div>
+        )}
+
+        {listing.address && (
+          <div class="pt-6 border-t border-neutral-200 dark:border-neutral-700">
+            <h2 class="font-semibold text-neutral-900 mb-2 dark:text-white">Ubicación</h2>
+            <p class="text-neutral-700 mb-4 dark:text-neutral-300">{listing.address}</p>
+
+            {listing.lat && listing.lng ? (
+              <div class="rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-700">
+                <div
+                  id="location-map"
+                  class="relative isolate w-full h-[320px]"
+                  data-lat={listing.lat}
+                  data-lng={listing.lng}
+                />
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${listing.lat},${listing.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-neutral-900 bg-white hover:bg-neutral-50 border-t border-neutral-200 transition-colors dark:text-white dark:bg-neutral-900 dark:hover:bg-neutral-800 dark:border-neutral-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  Abrir en Google Maps
+                </a>
+              </div>
+            ) : (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 text-sm font-semibold text-neutral-900 hover:underline dark:text-white"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+                Ver ubicación en Google Maps
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div class="lg:col-span-1">
+        <BookingWidget
+          client:load
+          listingId={listing.id}
+          price={effectivePrice}
+          currency={listing.currency}
+          viewerRole={Astro.locals.role}
+        />
+      </div>
+    </div>
+
+    {nearbyListings.length > 0 && (
+      <div class="mt-16 pt-10 border-t border-neutral-200 dark:border-neutral-700">
+        <h2 class="text-xl font-bold text-neutral-900 tracking-tight mb-5 dark:text-white">
+          Alojamientos cercanos
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-8">
+          {nearbyListings.map((nearby: any) => (
+            <ListingCard
+              id={nearby.id}
+              title={nearby.title}
+              city={nearby.city}
+              country={nearby.country}
+              price={nearby.price}
+              currency={nearby.currency}
+              coverUrl={nearby.coverUrl}
+              distanceKm={nearby.distanceKm}
+              rating={nearby.rating}
+              reviewCount={nearby.reviewCount}
+            />
+          ))}
+        </div>
+      </div>
+    )}
+  </main>
+
+  <!-- Datos de imágenes para el pop-up -->
+  <script type="application/json" id="gallery-data" set:html={JSON.stringify(imageUrls)} />
+
+  <!-- Photo tour: vista tipo Airbnb con todas las fotos en columna -->
+  <div
+    id="photo-tour-modal"
+    class="hidden fixed inset-0 z-[100] bg-white overflow-y-auto dark:bg-neutral-900"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Todas las fotos"
+  >
+    <div class="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-neutral-200 px-4 sm:px-6 py-4 flex items-center justify-between dark:border-neutral-700 dark:bg-neutral-900/90">
+      <button
+        type="button"
+        data-action="close-photo-tour"
+        class="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-neutral-100 transition-colors text-sm font-semibold text-neutral-900 dark:hover:bg-neutral-800 dark:text-white"
+        aria-label="Cerrar y volver al alojamiento"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+        Cerrar
+      </button>
+      <p class="text-sm font-semibold text-neutral-900 truncate max-w-[40%] dark:text-white">{listing.title}</p>
+      <div class="w-16"></div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6" id="photo-tour-list">
+      <!-- Se rellena por JS -->
+    </div>
+  </div>
+
+  <!-- Lightbox: foto individual a pantalla completa con navegación -->
+  <div
+    id="lightbox-modal"
+    class="hidden fixed inset-0 z-[110] bg-black/95 flex items-center justify-center"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Visor de foto"
+  >
+    <button
+      type="button"
+      data-action="close-lightbox"
+      class="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors text-sm font-medium"
+      aria-label="Cerrar y volver al alojamiento"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+      Cerrar
+    </button>
+
+    <button
+      type="button"
+      data-action="lightbox-prev"
+      class="absolute left-2 sm:left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+      aria-label="Foto anterior"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+        <path d="m15 18-6-6 6-6"/>
+      </svg>
+    </button>
+
+    <img
+      id="lightbox-img"
+      src=""
+      alt=""
+      class="max-h-[85vh] max-w-[90vw] object-contain select-none"
+    />
+
+    <button
+      type="button"
+      data-action="lightbox-next"
+      class="absolute right-2 sm:right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+      aria-label="Siguiente foto"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
+        <path d="m9 18 6-6-6-6"/>
+      </svg>
+    </button>
+
+    <div
+      id="lightbox-counter"
+      class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/40 px-3 py-1 rounded-full"
+    >
+      1 / 1
+    </div>
+  </div>
+</BaseLayout>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  // Todo el pop-up funciona con delegación de eventos sobre document.
+  // Así, aunque este script se re-ejecute en cada astro:page-load
+  // (típico con View Transitions), nunca quedan listeners duplicados
+  // ni botones "muertos": no hay listeners individuales que perder.
+
+  let galleryUrls: string[] = [];
+  let galleryIndex = 0;
+  let galleryBound = false;
+
+  function getEls() {
+    return {
+      photoTourModal: document.getElementById('photo-tour-modal'),
+      photoTourList: document.getElementById('photo-tour-list'),
+      lightboxModal: document.getElementById('lightbox-modal'),
+      lightboxImg: document.getElementById('lightbox-img') as HTMLImageElement | null,
+      lightboxCounter: document.getElementById('lightbox-counter'),
+    };
+  }
+
+  function lockScroll(lock: boolean) {
+    document.documentElement.style.overflow = lock ? 'hidden' : '';
+  }
+
+  function isHidden(el: HTMLElement | null) {
+    return !el || el.classList.contains('hidden');
+  }
+
+  function updateLightbox() {
+    const { lightboxImg, lightboxCounter } = getEls();
+    if (!lightboxImg || !lightboxCounter || galleryUrls.length === 0) return;
+    lightboxImg.src = galleryUrls[galleryIndex];
+    lightboxImg.alt = `Foto ${galleryIndex + 1} de ${galleryUrls.length}`;
+    lightboxCounter.textContent = `${galleryIndex + 1} / ${galleryUrls.length}`;
+  }
+
+  function openLightbox(index: number) {
+    if (galleryUrls.length === 0) return;
+    galleryIndex = ((index % galleryUrls.length) + galleryUrls.length) % galleryUrls.length;
+    updateLightbox();
+    getEls().lightboxModal?.classList.remove('hidden');
+    lockScroll(true);
+  }
+
+  function closeLightbox() {
+    getEls().lightboxModal?.classList.add('hidden');
+    if (isHidden(getEls().photoTourModal)) lockScroll(false);
+  }
+
+  function openPhotoTour() {
+    const { photoTourModal, photoTourList } = getEls();
+    if (photoTourList && photoTourList.childElementCount === 0) {
+      galleryUrls.forEach((url, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'block w-full';
+        btn.setAttribute('data-action', 'open-lightbox');
+        btn.setAttribute('data-index', String(i));
+        btn.setAttribute('aria-label', 'Ver foto en pantalla completa');
+
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = `Foto ${i + 1}`;
+        img.className = 'w-full rounded-xl object-cover pointer-events-none';
+
+        btn.appendChild(img);
+        photoTourList.appendChild(btn);
+      });
+    }
+    photoTourModal?.classList.remove('hidden');
+    lockScroll(true);
+  }
+
+  function closePhotoTour() {
+    getEls().photoTourModal?.classList.add('hidden');
+    if (isHidden(getEls().lightboxModal)) lockScroll(false);
+  }
+
+  function initGalleryData() {
+    const dataEl = document.getElementById('gallery-data');
+    if (!dataEl) return;
+    try {
+      galleryUrls = JSON.parse(dataEl.textContent || '[]');
+    } catch {
+      galleryUrls = [];
+    }
+  }
+
+  function bindGalleryEventsOnce() {
+    if (galleryBound) return;
+    galleryBound = true;
+
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+
+      const actionEl = target.closest('[data-action]') as HTMLElement | null;
+      if (actionEl) {
+        const action = actionEl.getAttribute('data-action');
+        if (action === 'open-lightbox') {
+          openLightbox(parseInt(actionEl.getAttribute('data-index') || '0', 10));
+        } else if (action === 'open-photo-tour') {
+          openPhotoTour();
+        } else if (action === 'close-photo-tour') {
+          closePhotoTour();
+        } else if (action === 'close-lightbox') {
+          closeLightbox();
+        } else if (action === 'lightbox-prev') {
+          openLightbox(galleryIndex - 1);
+        } else if (action === 'lightbox-next') {
+          openLightbox(galleryIndex + 1);
+        }
+        return;
+      }
+
+      // Click en el fondo negro del lightbox (fuera de la imagen y los botones) cierra
+      if (target.id === 'lightbox-modal') {
+        closeLightbox();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      const { lightboxModal, photoTourModal } = getEls();
+      const lightboxOpen = !isHidden(lightboxModal);
+      const tourOpen = !isHidden(photoTourModal);
+
+      if (e.key === 'Escape') {
+        if (lightboxOpen) closeLightbox();
+        else if (tourOpen) closePhotoTour();
+      }
+      if (lightboxOpen && e.key === 'ArrowLeft') openLightbox(galleryIndex - 1);
+      if (lightboxOpen && e.key === 'ArrowRight') openLightbox(galleryIndex + 1);
+    });
+  }
+
+  function initGalleryPopup() {
+    initGalleryData();
+    bindGalleryEventsOnce();
+  }
+
+  function initLocationMap() {
+    const container = document.getElementById('location-map') as (HTMLElement & { _leafletMap?: any }) | null;
+    const L = (window as any).L;
+    if (!container || !L) return;
+
+    const lat = parseFloat(container.dataset.lat || '');
+    const lng = parseFloat(container.dataset.lng || '');
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+    // Evitar "Map container is already initialized" al re-ejecutarse en astro:page-load
+    if (container._leafletMap) {
+      container._leafletMap.remove();
+      container._leafletMap = undefined;
+    }
+
+    const map = L.map(container, {
+      center: [lat, lng],
+      zoom: 14,
+      scrollWheelZoom: true,
+      zoomControl: true,
+      attributionControl: true,
+    });
+    container._leafletMap = map;
+
+    // Tiles claros y minimalistas (estilo Airbnb), sin API key
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      maxZoom: 19,
+    }).addTo(map);
+
+    // Círculo de "zona aproximada" (como hace Airbnb en vez de mostrar el pin exacto)
+    L.circle([lat, lng], {
+      radius: 250,
+      color: '#111827',
+      weight: 1,
+      fillColor: '#111827',
+      fillOpacity: 0.12,
+    }).addTo(map);
+
+    // Punto central discreto
+    const dotIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:14px;height:14px;border-radius:9999px;background:#111827;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+    L.marker([lat, lng], { icon: dotIcon, interactive: false }).addTo(map);
+  }
+
+  initGalleryPopup();
+  initLocationMap();
+  document.addEventListener('astro:page-load', () => {
+    initGalleryPopup();
+    initLocationMap();
+  });
+</script>

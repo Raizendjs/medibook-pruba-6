@@ -1,0 +1,90 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import AdminRoleRequests from "../../../components/roles/AdminRoleRequests";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers();
+const usersById = new Map((authUsersData?.users ?? []).map((u) => [u.id, u]));
+
+const { data: pendingRaw } = await supabaseServer
+  .from("role_change_requests")
+  .select("id, user_id, previous_role, requested_role, reason, created_at")
+  .eq("status", "pending")
+  .order("created_at", { ascending: true });
+
+const pendingRequests = (pendingRaw ?? []).map((r: any) => {
+  const requester = usersById.get(r.user_id);
+  return {
+    ...r,
+    requester_email: requester?.email ?? null,
+    requester_name: requester?.user_metadata?.full_name || requester?.user_metadata?.name || null,
+  };
+});
+
+const { data: historyRaw } = await supabaseServer
+  .from("role_change_requests")
+  .select("id, user_id, previous_role, requested_role, status, reason, admin_note, created_at, reviewed_at")
+  .neq("status", "pending")
+  .order("reviewed_at", { ascending: false })
+  .limit(20);
+
+const history = (historyRaw ?? []).map((r: any) => ({
+  ...r,
+  requester_name:
+    usersById.get(r.user_id)?.user_metadata?.full_name ||
+    usersById.get(r.user_id)?.user_metadata?.name ||
+    usersById.get(r.user_id)?.email ||
+    r.user_id,
+}));
+
+const ROLE_LABELS: Record<string, string> = { usuario: "Usuario", anfitrion: "Anfitrión", administrador: "Administrador" };
+const STATUS_BADGE: Record<string, string> = {
+  approved: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  rejected: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+};
+---
+
+<BaseLayout title="Solicitudes de rol — Admin" description="Aprobar o rechazar cambios de rol">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+    <div>
+      <a href="/admin/" class="text-sm text-slate-500 hover:underline">← Panel de administrador</a>
+      <h1 class="text-2xl font-bold mt-2">Solicitudes de cambio de rol</h1>
+    </div>
+
+    <AdminRoleRequests client:load initialRequests={pendingRequests} />
+
+    {history.length > 0 && (
+      <section>
+        <h2 class="text-lg font-bold mb-3">Historial reciente</h2>
+        <div class="space-y-2">
+          {history.map((r: any) => (
+            <div class="flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-sm">
+              <div>
+                <p class="font-medium">{r.requester_name}</p>
+                <p class="text-xs text-slate-500">{ROLE_LABELS[r.previous_role]} → {ROLE_LABELS[r.requested_role]}</p>
+              </div>
+              <span class={`text-xs px-2 py-1 rounded-full ${STATUS_BADGE[r.status] ?? ""}`}>{r.status}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+  </main>
+</div>
+</BaseLayout>

@@ -1,0 +1,53 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import CheckoutForm from "../components/CheckoutForm";
+import { createSupabaseServerClient } from "../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) return Astro.redirect("/login/");
+
+const { data: itemsRaw } = await supabase
+  .from("cart_items")
+  .select("id, check_in, check_out, guests, total_price, listings(title, currency)")
+  .eq("user_id", userData.user.id);
+
+const items = itemsRaw ?? [];
+
+if (items.length === 0) {
+  return Astro.redirect("/carrito/");
+}
+
+const total = items.reduce((sum, i: any) => sum + Number(i.total_price), 0);
+const currency = (items[0] as any).listings?.currency ?? "USD";
+---
+
+<BaseLayout title="Pagar" description="Completa tu pago para confirmar tus reservas">
+  <br /><br />
+  <main class="max-w-lg mx-auto px-4 sm:px-6 py-8">
+    <a href="/carrito/" class="text-sm text-slate-500 hover:underline">← Volver al carrito</a>
+    <h1 class="text-2xl font-bold text-black dark:text-white tracking-tight mt-2 mb-6">
+      Completa tu pago
+    </h1>
+
+    <div class="rounded-2xl border border-neutral-200 dark:border-slate-800 dark:bg-slate-900 p-4 mb-6">
+      {items.map((i: any) => (
+        <div class="flex justify-between text-sm py-1 text-neutral-700 dark:text-slate-300">
+          <span>{i.listings?.title} · {i.check_in} → {i.check_out}</span>
+          <span>{currency} {i.total_price}</span>
+        </div>
+      ))}
+      <div class="border-t border-neutral-200 dark:border-slate-800 mt-2 pt-2 flex justify-between font-semibold text-neutral-900 dark:text-white">
+        <span>Total</span>
+        <span>{currency} {total.toFixed(2)}</span>
+      </div>
+    </div>
+
+    <CheckoutForm client:load total={total} currency={currency} />
+
+    <p class="text-xs text-slate-400 mt-4 text-center">
+      Al confirmar el pago, tus reservas quedarán registradas como
+      pendientes de aprobación por cada anfitrión.
+    </p>
+  </main>
+</BaseLayout>

@@ -1,0 +1,82 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ChatWindow from "../../components/chat/ChatWindow";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) return Astro.redirect("/login/");
+
+const { id } = Astro.params;
+
+const { data: conversation } = await supabase
+  .from("conversations")
+  .select("id, requester_id, host_id, listing_id, listings(title)")
+  .eq("id", id)
+  .eq("type", "booking")
+  .maybeSingle();
+
+if (!conversation) return Astro.redirect("/mis-reservas/");
+
+const isGuest = conversation.requester_id === userData.user.id;
+const isHost = conversation.host_id === userData.user.id;
+if (!isGuest && !isHost) return Astro.redirect("/mis-reservas/");
+
+const otherPartyId = isGuest ? conversation.host_id : conversation.requester_id;
+const { data: otherPartyRaw } = await supabase
+  .from("profiles")
+  .select("full_name, avatar_url")
+  .eq("id", otherPartyId)
+  .maybeSingle();
+
+let otherParty = otherPartyRaw;
+
+// Si no tiene nombre o foto propios (perfil incompleto), respaldamos con
+// los datos de la cuenta con la que inició sesión — mismo criterio que ya
+// usamos en "Reservas recibidas".
+if (!otherParty?.full_name || !otherParty?.avatar_url) {
+  const supabaseAdmin = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL!,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data } = await supabaseAdmin.auth.admin.getUserById(otherPartyId);
+  const authUser = data?.user;
+  if (authUser) {
+    const fallbackAvatar = authUser.user_metadata?.avatar_url ?? authUser.user_metadata?.picture ?? null;
+    const fallbackName = authUser.email ? authUser.email.split("@")[0] : null;
+    otherParty = {
+      full_name: otherParty?.full_name ?? fallbackName,
+      avatar_url: otherParty?.avatar_url ?? fallbackAvatar,
+    };
+  }
+}
+
+const { data: messages } = await supabase
+  .from("messages")
+  .select("id, conversation_id, sender_id, body, created_at, read_at, attachment_path")
+  .eq("conversation_id", conversation.id)
+  .order("created_at", { ascending: true });
+
+const listingTitle = (conversation as any).listings?.title ?? "tu reserva";
+---
+
+<BaseLayout title={`Chat · ${listingTitle}`}>
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-28">
+    <a href={isGuest ? "/mis-reservas/" : "/mis-reservas-host/"} class="text-sm text-neutral-500 hover:text-neutral-900 mb-4 inline-block">
+      ← Volver
+    </a>
+    <p class="text-xs text-neutral-400 mb-2">Sobre: {listingTitle}</p>
+    <ChatWindow
+      client:load
+      conversationId={conversation.id}
+      currentUserId={userData.user.id}
+      otherPartyId={otherPartyId}
+      otherPartyName={otherParty?.full_name ?? (isGuest ? "Anfitrión" : "Huésped")}
+      otherPartyAvatar={otherParty?.avatar_url}
+      isActive={true}
+      initialMessages={messages ?? []}
+      variant="booking"
+    />
+  </main>
+</BaseLayout>

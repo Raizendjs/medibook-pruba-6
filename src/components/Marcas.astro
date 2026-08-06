@@ -1,0 +1,115 @@
+---
+const marcas = [
+  { nombre: "Marca 1", logo: "https://foreverfutbol.com.ec/radio/wp-content/uploads/2026/06/Coca-Cola_logo.svg_.png" },
+  { nombre: "Marca 2", logo: "https://foreverfutbol.com.ec/radio/wp-content/uploads/2026/06/Coca-Cola_logo.svg_.png" },
+  { nombre: "Marca 3", logo: "https://foreverfutbol.com.ec/radio/wp-content/uploads/2026/06/Coca-Cola_logo.svg_.png" },
+  { nombre: "Marca 4", logo: "https://foreverfutbol.com.ec/radio/wp-content/uploads/2026/06/Coca-Cola_logo.svg_.png" },
+  { nombre: "Marca 5", logo: "https://foreverfutbol.com.ec/radio/wp-content/uploads/2026/06/Coca-Cola_logo.svg_.png" },
+];
+
+// Triplicamos
+const items = [...marcas, ...marcas, ...marcas];
+---
+
+<div class="marcas text-center max-w-full  border-y-2 -mt-  mx-auto mb-20 reveal-on-scroll"><br>
+    <h2  class="text-2xl md:text-2xl -mt-5  font-extrabold text-slate-900 dark:text-white mb-6">
+      Marcas que confian en Forever Studio
+    </h2>
+    
+  
+<br>
+
+<div class=" carousel-wrapper">
+  <div class="carousel-track">
+    {
+      items.map((marca) => (
+        <img
+          src={marca.logo}
+          alt={marca.nombre}
+          class="logo"
+          loading="lazy"
+        />
+      ))
+    }
+  </div>
+</div>
+<br>
+</div>
+
+<style>
+  .marcas {
+    padding: 1.5rem 0;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(20px);
+  }
+
+
+.carousel-wrapper {
+  overflow: hidden;
+  width: 100%;
+}
+
+.carousel-track {
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+  width: fit-content;
+  animation: infiniteScroll 20s linear infinite;
+}
+
+.carousel-track:hover {
+  animation-play-state: paused;
+}
+
+.logo {
+  height: 80px;
+  width: auto;
+  flex-shrink: 0;
+}
+h2  {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  font-family:, Helvetica;
+}
+
+@keyframes infiniteScroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-100% / 3));
+  }
+}
+
+</style>
+  </div>
+</section>
+
+<style>
+  .carousel-track {
+    display: flex;
+    align-items: center;
+    gap: 4rem;
+    width: max-content;
+    animation: scroll 25s linear infinite;
+  }
+
+  .carousel-track:hover {
+    animation-play-state: paused;
+  }
+
+  .logo-item {
+    flex-shrink: 0;
+  }
+
+  @keyframes scroll {
+    0% {
+      transform: translateX(0);
+    }
+
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+</style>

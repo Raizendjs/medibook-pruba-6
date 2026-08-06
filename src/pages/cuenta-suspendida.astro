@@ -1,0 +1,25 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Cuenta suspendida">
+  <br /><br />
+  <main class="max-w-md mx-auto px-4 sm:px-6 py-20 text-center">
+    <div class="text-5xl mb-4">🚫</div>
+    <h1 class="text-2xl font-bold text-black dark:text-white mb-2">
+      Tu cuenta está suspendida
+    </h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mb-8">
+      Un administrador desactivó el acceso a esta cuenta. Si crees que esto
+      es un error, contáctanos por otro medio.
+    </p>
+    <form method="POST" action="/api/logout/">
+      <button
+        type="submit"
+        class="rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-5 py-2.5 text-sm font-semibold hover:opacity-90 transition"
+      >
+        Cerrar sesión
+      </button>
+    </form>
+  </main>
+</BaseLayout>

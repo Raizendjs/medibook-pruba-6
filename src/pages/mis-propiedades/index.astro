@@ -1,0 +1,68 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import MyListingsList from "../../components/MyListingsList";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData, error: userError } = await supabaseServer.auth.getUser();
+
+if (userError || !userData.user) {
+  return Astro.redirect("/login/");
+}
+
+const { data: listingsRaw, error } = await supabaseServer
+  .from("listings")
+  .select("id, title, city, country, price, currency, status, listing_images(url, order_index)")
+  .eq("host_id", userData.user.id)
+  .order("created_at", { ascending: false });
+
+function getCoverUrl(listing: any) {
+  if (!listing.listing_images || listing.listing_images.length === 0) return null;
+  const sorted = [...listing.listing_images].sort(
+    (a: any, b: any) => a.order_index - b.order_index
+  );
+  return sorted[0].url;
+}
+
+const listings = (listingsRaw ?? []).map((l: any) => ({
+  id: l.id,
+  title: l.title,
+  city: l.city,
+  country: l.country,
+  price: l.price,
+  currency: l.currency,
+  status: l.status,
+  coverUrl: getCoverUrl(l),
+}));
+---
+
+<BaseLayout title="Mis propiedades">
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-28">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">Mis propiedades</h1>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">
+          {listings.length} propiedad{listings.length === 1 ? "" : "es"} publicada{listings.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <a
+        href="/mis-propiedades/nueva/"
+        class="shrink-0 rounded-full bg-[#FF385C] hover:bg-[#E31C5F] text-white text-sm font-semibold px-5 py-2.5 transition-colors text-center"
+      >
+        ➕ Publicar nueva
+      </a>
+    </div>
+
+    {error && (
+      <p class="text-sm text-[#FF385C]">
+        Hubo un error cargando tus propiedades. Intenta de nuevo.
+      </p>
+    )}
+
+    {!error && <MyListingsList client:load initialListings={listings} />}
+  </main>
+</BaseLayout>

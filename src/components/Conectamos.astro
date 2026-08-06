@@ -1,0 +1,574 @@
+---
+// ConectamosTuMarca.astro
+---
+
+<section class=" -mb-8 mt-7 ctm-section" id="ctm-section">
+    <div class="ctm-card">
+  
+      <!-- BG imagen columna derecha -->
+      <div class="ctm-bg-img"></div>
+      <!-- Barra roja izquierda -->
+      <div class="ctm-accent-bar"></div>
+  
+      <!-- ═══ COLUMNA IZQUIERDA ═══ -->
+      <div class="ctm-left">
+  
+        <div class="ctm-header" id="ctm-header">
+          <span class="ctm-eyebrow">
+            <span class="ctm-dot"></span>
+            Conectamos tu Marca
+          </span>
+        </div>
+  
+        <div class="ctm-hero-stat" id="ctm-hero-stat">
+          <h2 class="ctm-big-number">
+            <span class="ctm-counter" data-target="5000000">0</span>
+          </h2>
+          <p class="ctm-big-label">De audiencia y público fidelizado</p>
+        </div>
+  
+        <div class="ctm-divider" id="ctm-divider"></div>
+  
+        <div class="ctm-stats-row" id="ctm-stats-row">
+          <div class="ctm-stat-item">
+            <h5 class="ctm-stat-number"><span class="ctm-counter" data-target="4000000">0</span></h5>
+            <p class="ctm-stat-label">Oyentes diarios activos</p>
+          </div>
+          <div class="ctm-vline"></div>
+          <div class="ctm-stat-item">
+            <h5 class="ctm-stat-number"><span class="ctm-counter" data-target="4000000">0</span></h5>
+            <p class="ctm-stat-label">Alcance semanal digital</p>
+          </div>
+          <div class="ctm-vline"></div>
+          <div class="ctm-signal-block">
+            <p class="ctm-signal-title">Por la señal de:</p>
+            <div class="ctm-locations">
+              <div class="ctm-location">
+                <svg width="11" height="14" viewBox="0 0 14 18" fill="none"><path d="M7 0C3.13 0 0 3.13 0 7c0 5.25 7 11 7 11s7-5.75 7-11c0-3.87-3.13-7-7-7zm0 9.5C5.62 9.5 4.5 8.38 4.5 7S5.62 4.5 7 4.5 9.5 5.62 9.5 7 8.38 9.5 7 9.5z" fill="#E8001D"/></svg>
+                <span>Guayas</span>
+              </div>
+              <div class="ctm-location">
+                <svg width="11" height="14" viewBox="0 0 14 18" fill="none"><path d="M7 0C3.13 0 0 3.13 0 7c0 5.25 7 11 7 11s7-5.75 7-11c0-3.87-3.13-7-7-7zm0 9.5C5.62 9.5 4.5 8.38 4.5 7S5.62 4.5 7 4.5 9.5 5.62 9.5 7 8.38 9.5 7 9.5z" fill="#E8001D"/></svg>
+                <span>Santa Elena</span>
+              </div>
+              <div class="ctm-location">
+                <svg width="11" height="14" viewBox="0 0 14 18" fill="none"><path d="M7 0C3.13 0 0 3.13 0 7c0 5.25 7 11 7 11s7-5.75 7-11c0-3.87-3.13-7-7-7zm0 9.5C5.62 9.5 4.5 8.38 4.5 7S5.62 4.5 7 4.5 9.5 5.62 9.5 7 8.38 9.5 7 9.5z" fill="#E8001D"/></svg>
+                <span>Babahoyo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- ═══ COLUMNA DERECHA — imagen + player centrado ═══ -->
+      <div class="ctm-right">
+        <div class="ctm-player-wrap" id="ctm-player">
+          <div class="ctm-player">
+            <div class="ctm-rings" id="ctm-rings">
+              <span class="ring r1"></span>
+              <span class="ring r2"></span>
+              <span class="ring r3"></span>
+              <button class="ctm-play-btn" id="ctm-play-btn" aria-label="Reproducir / Pausar">
+                <svg class="ctm-icon-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                <svg class="ctm-icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              </button>
+            </div>
+            <div class="ctm-player-info">
+              <div class="ctm-on-air">
+                <span class="ctm-on-air-dot"></span>EN VIVO
+              </div>
+              <p class="ctm-station-name">Radio Forever</p>
+              <div class="ctm-waveform" id="ctm-waveform">
+                <span></span><span></span><span></span><span></span>
+                <span></span><span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+          <audio id="ctm-audio" src="https://streamingecuador.net:2020/stream/radioforever" preload="none"></audio>
+        </div>
+      </div>
+  
+    </div>
+  </section>
+  
+  <style>
+    /* ── Romper cualquier contenedor padre ── */
+    .ctm-section {
+      position: relative;
+      left: 50%;
+      right: 50%;
+      margin-left: -50vw;
+      margin-right: -50vw;
+      width: 100vw;
+      max-width: 100vw;
+      padding: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+  
+    /* ── Card grid 2 cols ── */
+    .ctm-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 500px;
+      background: #080808;
+      width: 100%;
+      overflow: hidden;
+    }
+  
+    /* ── Imagen derecha ── */
+    .ctm-bg-img {
+      position: absolute;
+      top: 0; right: 0;
+      width: 50%;
+      height: 100%;
+      background-image:
+        linear-gradient(to right, #080808 0%, rgba(8,8,8,0.15) 50%),
+        url('/Conectamostumarca.webp');
+      background-size: cover;
+      background-position: center;
+      pointer-events: none;
+      z-index: 0;
+    }
+  
+    /* ── Barra roja ── */
+    .ctm-accent-bar {
+      position: absolute;
+      top: 0; left: 0;
+      width: 4px;
+      height: 100%;
+      background: #E8001D;
+      z-index: 3;
+    }
+  
+    /* ── Columna izquierda ── */
+    .ctm-left {
+      position: relative;
+      z-index: 1;
+      padding: 5rem 4rem 5rem 6rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+  
+    /* ── Eyebrow ── */
+    .ctm-header {
+      margin-bottom: 1.6rem;
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+  
+    .ctm-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: #E8001D;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+    }
+  
+    .ctm-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #E8001D;
+      flex-shrink: 0;
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+  
+    @keyframes pulse-dot {
+      0%,100% { opacity:1; transform:scale(1); }
+      50%      { opacity:.3; transform:scale(.55); }
+    }
+  
+    /* ── Número grande ── */
+    .ctm-hero-stat {
+      opacity: 0;
+      transform: translateY(24px);
+      margin-bottom: 2.2rem;
+    }
+  
+    .ctm-big-number {
+      font-size: clamp(4.5rem, 8vw, 9rem);
+      font-weight: 900;
+      color: #fff;
+      line-height: 0.9;
+      margin: 0 0 0.6rem;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+  
+    .ctm-big-label {
+      color: rgba(255,255,255,0.5);
+      font-size: clamp(0.8rem, 1.2vw, 1rem);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin: 0;
+    }
+  
+    /* ── Divider ── */
+    .ctm-divider {
+      width: 0;
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      margin-bottom: 2rem;
+    }
+  
+    /* ── Stats row ── */
+    .ctm-stats-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 2.8rem;
+      flex-wrap: wrap;
+      opacity: 0;
+      transform: translateY(18px);
+    }
+  
+    .ctm-stat-item { flex-shrink: 0; }
+  
+    .ctm-stat-number {
+      font-size: clamp(1.5rem, 2.8vw, 2.4rem);
+      font-weight: 800;
+      color: #E8001D;
+      margin: 0 0 0.38rem;
+      font-variant-numeric: tabular-nums;
+    }
+  
+    .ctm-stat-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.78rem;
+      line-height: 1.5;
+      margin: 0;
+      max-width: 130px;
+    }
+  
+    .ctm-vline {
+      width: 1px; height: 60px;
+      background: rgba(255,255,255,0.1);
+      align-self: center;
+      flex-shrink: 0;
+    }
+  
+    .ctm-signal-block { flex-shrink: 0; }
+  
+    .ctm-signal-title {
+      color: rgba(255,255,255,0.45);
+      font-size: 0.68rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin: 0 0 0.65rem;
+    }
+  
+    .ctm-locations {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+  
+    .ctm-location {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+  
+    /* ── Columna derecha ── */
+    .ctm-right {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  
+    /* ── Player ── */
+    .ctm-player-wrap {
+      opacity: 0;
+      transform: scale(0.86) translateY(18px);
+      width: 100%;
+      max-width: 420px;
+      padding: 0 2rem;
+    }
+  
+    .ctm-player {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      background: rgba(8,8,8,0.78);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 22px;
+      padding: 2rem 2.2rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 12px 56px rgba(0,0,0,0.6), 0 0 0 1px rgba(232,0,29,0.07);
+      width: 100%;
+      box-sizing: border-box;
+    }
+  
+    /* ── Anillos ── */
+    .ctm-rings {
+      position: relative;
+      width: 72px; height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+  
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1.5px solid rgba(232,0,29,0.35);
+      opacity: 0;
+    }
+  
+    .r1 { width: 72px;  height: 72px; }
+    .r2 { width: 104px; height: 104px; }
+    .r3 { width: 136px; height: 136px; }
+  
+    .ctm-rings.active .ring {
+      animation: ring-pulse 2.2s ease-out infinite;
+    }
+    .ctm-rings.active .r1 { animation-delay: 0s;   }
+    .ctm-rings.active .r2 { animation-delay: 0.65s; }
+    .ctm-rings.active .r3 { animation-delay: 1.3s;  }
+  
+    @keyframes ring-pulse {
+      0%   { opacity:.75; transform:scale(.7);  }
+      100% { opacity:0;   transform:scale(1.08); }
+    }
+  
+    /* ── Botón play ── */
+    .ctm-play-btn {
+      position: relative; z-index: 1;
+      width: 64px; height: 64px;
+      border-radius: 50%; border: none;
+      background: #E8001D;
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .18s ease;
+      box-shadow: 0 4px 26px rgba(232,0,29,.42);
+    }
+    .ctm-play-btn:hover  { transform: scale(1.08); box-shadow: 0 6px 34px rgba(232,0,29,.6); }
+    .ctm-play-btn:active { transform: scale(.95); }
+    .ctm-play-btn svg { width: 26px; height: 26px; }
+  
+    /* ── Info ── */
+    .ctm-player-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+    }
+  
+    .ctm-on-air {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(232,0,29,.12);
+      border: 1px solid rgba(232,0,29,.32);
+      border-radius: 5px;
+      padding: .2rem .65rem;
+      font-size: .62rem;
+      font-weight: 800;
+      letter-spacing: .18em;
+      color: #E8001D;
+      width: fit-content;
+    }
+  
+    .ctm-on-air-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #E8001D;
+      animation: blink 1s step-end infinite;
+    }
+  
+    @keyframes blink {
+      0%,100% { opacity:1; } 50% { opacity:0; }
+    }
+  
+    .ctm-station-name {
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: 0.01em;
+    }
+  
+    /* ── Waveform ── */
+    .ctm-waveform {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 26px;
+      margin-top: 4px;
+    }
+  
+    .ctm-waveform span {
+      display: block;
+      width: 3px; height: 4px;
+      border-radius: 2px;
+      background: #E8001D;
+      opacity: .22;
+    }
+  
+    .ctm-waveform.playing span {
+      opacity: 1;
+      animation: bar .8s ease-in-out infinite alternate;
+    }
+  
+    .ctm-waveform.playing span:nth-child(1)  { animation-duration:.55s; animation-delay:0s;    }
+    .ctm-waveform.playing span:nth-child(2)  { animation-duration:.75s; animation-delay:.08s;  }
+    .ctm-waveform.playing span:nth-child(3)  { animation-duration:.6s;  animation-delay:.04s;  }
+    .ctm-waveform.playing span:nth-child(4)  { animation-duration:.9s;  animation-delay:.12s;  }
+    .ctm-waveform.playing span:nth-child(5)  { animation-duration:.5s;  animation-delay:.02s;  }
+    .ctm-waveform.playing span:nth-child(6)  { animation-duration:.85s; animation-delay:.18s;  }
+    .ctm-waveform.playing span:nth-child(7)  { animation-duration:.65s; animation-delay:.06s;  }
+    .ctm-waveform.playing span:nth-child(8)  { animation-duration:.7s;  animation-delay:.14s;  }
+    .ctm-waveform.playing span:nth-child(9)  { animation-duration:.58s; animation-delay:.1s;   }
+    .ctm-waveform.playing span:nth-child(10) { animation-duration:.8s;  animation-delay:.16s;  }
+  
+    @keyframes bar { from { height:4px; } to { height:22px; } }
+  
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      .ctm-card {
+        grid-template-columns: 1fr;
+      }
+  
+      .ctm-bg-img {
+        width: 100%;
+        height: 260px;
+        top: auto; bottom: 0;
+        background-image:
+          linear-gradient(to bottom, #080808 0%, rgba(8,8,8,0.2) 70%),
+          url('/Conectamostumarca.webp');
+      }
+  
+      .ctm-left {
+        padding: 3rem 2rem 1.5rem 2.5rem;
+      }
+  
+      .ctm-right {
+        padding: 1rem 2rem 3rem;
+        justify-content: flex-start;
+      }
+  
+      .ctm-player-wrap {
+        padding: 0;
+        max-width: 100%;
+      }
+  
+      .ctm-vline { display: none; }
+      .ctm-stats-row { gap: 1.4rem; }
+      .r2, .r3 { display: none; }
+    }
+  
+    @media (prefers-reduced-motion: reduce) {
+      .ctm-dot, .ctm-on-air-dot, .ring,
+      .ctm-waveform span { animation: none !important; }
+    }
+  </style>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" is:inline></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" is:inline></script>
+  
+  <script is:inline>
+  (function () {
+    function animateCounter(el) {
+      var target = parseInt(el.dataset.target, 10);
+      var obj = { val: 0 };
+      gsap.to(obj, {
+        val: target, duration: 2, ease: 'power2.out',
+        onUpdate: function () {
+          el.textContent = Math.floor(obj.val).toLocaleString('es-EC');
+        }
+      });
+    }
+  
+    function init() {
+      if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
+        setTimeout(init, 80); return;
+      }
+      gsap.registerPlugin(ScrollTrigger);
+  
+      var section = document.getElementById('ctm-section');
+      if (!section) return;
+  
+      var tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: section,
+          start: 'top 78%',
+          toggleActions: 'play none none none'
+        }
+      });
+  
+      tl.to('#ctm-header', { opacity:1, y:0, duration:.5, ease:'power3.out' });
+  
+      tl.to('#ctm-hero-stat', {
+        opacity:1, y:0, duration:.6, ease:'power3.out',
+        onComplete: function () {
+          document.querySelectorAll('#ctm-hero-stat .ctm-counter').forEach(animateCounter);
+        }
+      }, '-=.15');
+  
+      tl.to('.ctm-divider', { width:'100%', duration:.65, ease:'power2.inOut' }, '-=.1');
+  
+      tl.to('#ctm-stats-row', {
+        opacity:1, y:0, duration:.55, ease:'power3.out',
+        onComplete: function () {
+          document.querySelectorAll('#ctm-stats-row .ctm-counter').forEach(animateCounter);
+        }
+      }, '-=.25');
+  
+      tl.to('#ctm-player', {
+        opacity:1, scale:1, y:0, duration:.65, ease:'back.out(1.6)'
+      }, '-=.2');
+    }
+  
+    function initPlayer() {
+      var btn       = document.getElementById('ctm-play-btn');
+      var audio     = document.getElementById('ctm-audio');
+      var wave      = document.getElementById('ctm-waveform');
+      var rings     = document.getElementById('ctm-rings');
+      var iconPlay  = btn ? btn.querySelector('.ctm-icon-play')  : null;
+      var iconPause = btn ? btn.querySelector('.ctm-icon-pause') : null;
+      if (!btn || !audio) return;
+  
+      var playing = false;
+  
+      btn.addEventListener('click', function () {
+        if (!playing) {
+          audio.play().catch(function(){});
+          iconPlay.style.display  = 'none';
+          iconPause.style.display = '';
+          wave.classList.add('playing');
+          if (rings) rings.classList.add('active');
+          playing = true;
+        } else {
+          audio.pause();
+          iconPlay.style.display  = '';
+          iconPause.style.display = 'none';
+          wave.classList.remove('playing');
+          if (rings) rings.classList.remove('active');
+          playing = false;
+        }
+      });
+  
+      audio.addEventListener('error', function () {
+        iconPlay.style.display  = '';
+        iconPause.style.display = 'none';
+        wave.classList.remove('playing');
+        if (rings) rings.classList.remove('active');
+        playing = false;
+      });
+    }
+  
+    document.addEventListener('DOMContentLoaded', function () { init(); initPlayer(); });
+    document.addEventListener('astro:page-load',  function () { init(); initPlayer(); });
+  })();

@@ -1,0 +1,39 @@
+---
+const { descripcion, item1, item2, item3, item4, item5, item6, desc1, desc2, desc3, desc4, desc5, desc6 } = Astro.props;
+---
+
+<section class="px-10 lg:py-10  border-t border-white/10">
+  <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+    <div>
+      <p class="text-red-500 text-xs font-bold tracking-widest uppercase mb-2">02 ——</p>
+      <h2 class="text-4xl md:text-5xl font-black uppercase dark:text-white leading-tight">
+        SERVICIOS <span class="text-red-500 italic">INCLUIDOS</span>
+      </h2>
+    </div>
+    <p class="text-white/40 text-sm max-w-xs">{descripcion}</p>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px dark:bg-[#333]  bg-[#333] border border-[#333]">
+    {[
+      { num: "■ 01", icon: "layout", title: item1, desc: desc1 },
+      { num: "◇ 02", icon: "code", title: item2, desc: desc2 },
+      { num: "◇ 03", icon: "shopping-cart", title: item3, desc: desc3 },
+      { num: "■ 04", icon: "chart-bar", title: item4, desc: desc4 },
+      { num: "⚡ 05", icon: "bolt", title: item5, desc: desc5 },
+      { num: "+ 06",  icon: "shield-check", title: item6, desc: desc6 },
+    ].map(({ num, title, desc }, i) => (
+      <div class="relative bg-gray-100 even:bg-gray-200  dark:bg-[#1a1a1a] dark:even:bg-[#161616] p-6 flex flex-col gap-3 group hover:bg-red-700 hover:even:bg-red-700  transition overflow-hidden">
+        <span class="text-red-500 group-hover:text-white  text-[10px] font-bold tracking-widest">{num}</span>
+        <div class="w-11 h-11 border group-hover:border-gray-300 border-red-500 rounded-md flex items-center justify-center text-red-500">
+          <!-- pon tu ícono SVG aquí -->
+        </div>
+        <h3 class="dark:text-white group-hover:text-white font-black text-sm uppercase leading-tight">{title}</h3>
+        <div class="w-8 h-0.5 bg-red-500 group-hover:bg-white"></div>
+        <p class="dark:text-white/40 group-hover:text-white text-xs leading-relaxed">{desc}</p>
+        <span class="absolute bottom-4 right-4 text-3xl font-black dark:text-white/5 text-gray-500 leading-none select-none">
+          {String(i + 1).padStart(2, "0")}
+        </span>
+      </div>
+    ))}
+  </div>
+</section>

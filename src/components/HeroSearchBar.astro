@@ -1,0 +1,232 @@
+---
+// HeroSearchBar.astro
+// Barra de búsqueda estilo Airbnb para el home — destino, fechas, huéspedes
+// + fila de categorías. Pensado para ir justo debajo del hero o como hero mismo.
+
+const categories = [
+  { name: "Cabañas", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10" },
+  { name: "Frente al mar", icon: "M2 20c2-2 4-2 6 0s4 2 6 0 4-2 6 0M4 14l8-9 8 9M9 14v6M15 14v6" },
+  { name: "Lofts", icon: "M4 21V7l8-4 8 4v14M4 21h16M9 21v-6h6v6" },
+  { name: "Casas rurales", icon: "M3 11l9-7 9 7M5 10v11h5v-6h4v6h5V10" },
+  { name: "Vistas increíbles", icon: "M3 17l5-6 4 4 6-8 3 4M3 17h18v3H3z" },
+  { name: "Diseño único", icon: "M12 2l2.9 6.3 6.9.9-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9-5-4.9 6.9-.9z" },
+  { name: "Lujo", icon: "M4 8l4 3 4-6 4 6 4-3-2 11H6z" },
+  { name: "Económicos", icon: "M12 3v18M7 7h7a3 3 0 010 6H8a3 3 0 000 6h8" },
+];
+---
+
+<section class="hero-search relative w-full bg-white dark:bg-[#0B1120] transition-colors duration-500">
+  <!-- Barra de búsqueda -->
+  <div class="search-wrap px-5 pt-8 pb-4 md:px-16 md:pt-10">
+    <form
+      id="searchForm"
+      class="search-bar relative mx-auto flex w-full max-w-3xl flex-col overflow-visible rounded-3xl border border-slate-200 bg-white shadow-md shadow-black/5 md:flex-row md:items-center md:rounded-full dark:border-slate-700 dark:bg-slate-900"
+    >
+      <div class="field group relative flex-1 px-6 py-3 md:py-2.5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700">
+        <label class="block text-[0.68rem] font-semibold text-slate-900 dark:text-slate-100" for="destino">Destino</label>
+        <input
+          id="destino"
+          type="text"
+          placeholder="¿A dónde vas?"
+          autocomplete="off"
+          class="w-full border-0 bg-transparent p-0 text-[0.85rem] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-200"
+        />
+      </div>
+
+      <div class="field group relative flex-1 px-6 py-3 md:py-2.5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700">
+        <label class="block text-[0.68rem] font-semibold text-slate-900 dark:text-slate-100" for="llegada">Llegada</label>
+        <input
+          id="llegada"
+          type="date"
+          class="w-full border-0 bg-transparent p-0 text-[0.85rem] text-slate-700 focus:outline-none focus:ring-0 dark:text-slate-200 [color-scheme:light] dark:[color-scheme:dark]"
+        />
+      </div>
+
+      <div class="field group relative flex-1 px-6 py-3 md:py-2.5 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700">
+        <label class="block text-[0.68rem] font-semibold text-slate-900 dark:text-slate-100" for="salida">Salida</label>
+        <input
+          id="salida"
+          type="date"
+          class="w-full border-0 bg-transparent p-0 text-[0.85rem] text-slate-700 focus:outline-none focus:ring-0 dark:text-slate-200 [color-scheme:light] dark:[color-scheme:dark]"
+        />
+      </div>
+
+      <div class="field relative flex-1 px-6 py-3 md:py-2.5">
+        <button
+          type="button"
+          id="guestsToggle"
+          class="w-full text-left"
+          aria-expanded="false"
+          aria-controls="guestsPanel"
+        >
+          <span class="block text-[0.68rem] font-semibold text-slate-900 dark:text-slate-100">Huéspedes</span>
+          <span id="guestsSummary" class="block text-[0.85rem] text-slate-400">¿Cuántos?</span>
+        </button>
+
+        <div
+          id="guestsPanel"
+          class="guests-panel absolute right-0 top-[calc(100%+10px)] z-20 hidden w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl shadow-black/10 dark:border-slate-700 dark:bg-slate-900"
+        >
+          {[
+            { key: "adultos", label: "Adultos", sub: "13 años o más" },
+            { key: "ninos", label: "Niños", sub: "De 2 a 12 años" },
+            { key: "bebes", label: "Bebés", sub: "Menores de 2 años" },
+          ].map((row) => (
+            <div class="counter-row flex items-center justify-between py-2.5" data-key={row.key}>
+              <div>
+                <p class="text-[0.85rem] font-medium text-slate-900 dark:text-slate-100">{row.label}</p>
+                <p class="text-[0.72rem] text-slate-400">{row.sub}</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <button type="button" class="counter-btn dec flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition-colors hover:border-[#C6482F] hover:text-[#C6482F] disabled:opacity-30 disabled:hover:border-slate-300 disabled:hover:text-slate-500 dark:border-slate-600 dark:text-slate-300">
+                  &#8722;
+                </button>
+                <span class="counter-value w-4 text-center text-[0.85rem] text-slate-900 dark:text-slate-100">0</span>
+                <button type="button" class="counter-btn inc flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 text-slate-500 transition-colors hover:border-[#C6482F] hover:text-[#C6482F] dark:border-slate-600 dark:text-slate-300">
+                  &#43;
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        class="search-btn mx-2 mb-3 mt-1 flex items-center justify-center gap-2 rounded-full bg-[#E85D4E] px-6 py-3 text-[0.85rem] font-semibold text-white transition-transform duration-150 hover:scale-[1.03] hover:bg-[#C6482F] md:mx-2 md:mb-0 md:mt-0 md:py-3"
+      >
+        <svg class="h-4 w-4 fill-none stroke-white stroke-[2.4]" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
+        <span class="md:hidden">Buscar alojamiento</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Fila de categorías -->
+  <div class="categories-wrap border-t border-slate-100 px-5 py-4 md:px-16 dark:border-slate-800">
+    <div class="categories flex gap-7 overflow-x-auto scrollbar-none" id="categories">
+      {categories.map((cat, i) => (
+        <button
+          type="button"
+          class:list={[
+            "category-item flex shrink-0 flex-col items-center gap-2 border-b-2 pb-2 pt-1 text-[0.72rem] font-medium text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
+            i === 0
+              ? "border-slate-900 text-slate-900 dark:border-white dark:text-white"
+              : "border-transparent",
+          ]}
+          data-index={i}
+        >
+          <svg class="h-5 w-5 fill-none stroke-current stroke-[1.6]" viewBox="0 0 24 24">
+            <path d={cat.icon} />
+          </svg>
+          {cat.name}
+        </button>
+      ))}
+    </div>
+  </div>
+</section>
+
+<script>
+  function initHeroSearch() {
+    const toggle = document.querySelector<HTMLButtonElement>("#guestsToggle");
+    const panel = document.querySelector<HTMLElement>("#guestsPanel");
+    const summary = document.querySelector<HTMLElement>("#guestsSummary");
+    const form = document.querySelector<HTMLFormElement>("#searchForm");
+    const categoryItems = document.querySelectorAll<HTMLButtonElement>(".category-item");
+
+    if (!toggle || !panel || !summary || !form) return;
+
+    const counts: Record<string, number> = { adultos: 0, ninos: 0, bebes: 0 };
+
+    const closePanel = () => {
+      panel.classList.add("hidden");
+      toggle.setAttribute("aria-expanded", "false");
+    };
+
+    const updateSummary = () => {
+      const total = counts.adultos + counts.ninos;
+      if (total === 0) {
+        summary.textContent = "¿Cuántos?";
+        summary.classList.add("text-slate-400");
+      } else {
+        let text = `${total} huésped${total > 1 ? "es" : ""}`;
+        if (counts.bebes > 0) text += `, ${counts.bebes} bebé${counts.bebes > 1 ? "s" : ""}`;
+        summary.textContent = text;
+        summary.classList.remove("text-slate-400");
+      }
+    };
+
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = !panel.classList.contains("hidden");
+      panel.classList.toggle("hidden");
+      toggle.setAttribute("aria-expanded", String(!isOpen));
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!panel.contains(e.target as Node) && e.target !== toggle) closePanel();
+    });
+
+    panel.querySelectorAll<HTMLElement>(".counter-row").forEach((row) => {
+      const key = row.dataset.key as string;
+      const valueEl = row.querySelector<HTMLElement>(".counter-value")!;
+      const decBtn = row.querySelector<HTMLButtonElement>(".dec")!;
+      const incBtn = row.querySelector<HTMLButtonElement>(".inc")!;
+
+      const render = () => {
+        valueEl.textContent = String(counts[key]);
+        decBtn.disabled = counts[key] === 0;
+      };
+
+      decBtn.addEventListener("click", () => {
+        if (counts[key] > 0) counts[key] -= 1;
+        render();
+        updateSummary();
+      });
+      incBtn.addEventListener("click", () => {
+        counts[key] += 1;
+        render();
+        updateSummary();
+      });
+
+      render();
+    });
+
+    categoryItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        categoryItems.forEach((el) => {
+          el.classList.remove("border-slate-900", "text-slate-900", "dark:border-white", "dark:text-white");
+          el.classList.add("border-transparent");
+        });
+        item.classList.remove("border-transparent");
+        item.classList.add("border-slate-900", "text-slate-900", "dark:border-white", "dark:text-white");
+      });
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const destino = (document.querySelector<HTMLInputElement>("#destino")?.value ?? "").trim();
+      const llegada = document.querySelector<HTMLInputElement>("#llegada")?.value ?? "";
+      const salida = document.querySelector<HTMLInputElement>("#salida")?.value ?? "";
+      // TODO: conectar con la lógica real de búsqueda / redirección a resultados
+      console.log({ destino, llegada, salida, ...counts });
+      closePanel();
+    });
+  }
+
+  document.addEventListener("astro:page-load", initHeroSearch);
+</script>
+
+<style>
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+  }
+</style>

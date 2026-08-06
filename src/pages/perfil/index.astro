@@ -1,0 +1,179 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import EditProfileModalTrigger from "../../components/EditProfileModalTrigger.tsx";
+import { StarRatingDisplay } from "../../components/StarRating";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) return Astro.redirect("/login/");
+
+const { data: profile } = await supabase
+  .from("profiles")
+  .select("full_name, avatar_url, bio, role")
+  .eq("id", userData.user.id)
+  .single();
+
+const role = profile?.role === "anfitrion" ? "anfitrion" : "usuario";
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+let avgRating = 0;
+let ratingCount = 0;
+
+// Stats + accesos rápidos: lo que antes vivía separado en /dashboard/ (usuario)
+// o arriba de /mis-propiedades/ (anfitrión), ahora unificado acá.
+let stats: { label: string; value: number; color: string }[] = [];
+let quickLinks: { href: string; icon: string; label: string; hint: string }[] = [];
+
+if (role === "anfitrion") {
+  const { data: listingsRaw } = await supabaseAdmin.from("listings").select("id").eq("host_id", userData.user.id);
+  const listingIds = (listingsRaw ?? []).map((l: any) => l.id);
+
+  let pendingCount = 0;
+  let confirmedCount = 0;
+  if (listingIds.length > 0) {
+    const { data: bookingsRaw } = await supabaseAdmin.from("bookings").select("status").in("listing_id", listingIds);
+    for (const b of bookingsRaw ?? []) {
+      if (b.status === "pending") pendingCount++;
+      if (b.status === "confirmed") confirmedCount++;
+    }
+
+    const { data: reviews } = await supabaseAdmin.from("reviews").select("rating").in("listing_id", listingIds);
+    ratingCount = reviews?.length ?? 0;
+    avgRating = ratingCount > 0 ? (reviews ?? []).reduce((s: number, r: any) => s + r.rating, 0) / ratingCount : 0;
+  }
+
+  stats = [
+    { label: "Propiedades", value: listingIds.length, color: "text-neutral-900 dark:text-white" },
+    { label: "Reservas pendientes", value: pendingCount, color: "text-amber-500" },
+    { label: "Reservas confirmadas", value: confirmedCount, color: "text-green-500" },
+  ];
+  quickLinks = [
+    { href: "/mis-reservas-host/", icon: "📅", label: `Reservas recibidas${pendingCount > 0 ? ` (${pendingCount})` : ""}`, hint: "Confirma o rechaza reservas." },
+    { href: "/mis-propiedades/nueva/", icon: "➕", label: "Publicar nueva", hint: "Publica una nueva propiedad." },
+    { href: "/mis-propiedades/ganancias/", icon: "💰", label: "Mis ganancias", hint: "Ver tus ingresos generados." },
+    { href: "/ayuda/", icon: "💬", label: "Ayuda", hint: "Chatea en vivo con un administrador." },
+    { href: "/solicitar-rol/", icon: "🔁", label: "Solicitar otro rol", hint: "Cambia el tipo de tu cuenta." },
+  ];
+} else {
+  const { data: ratings } = await supabaseAdmin.from("guest_ratings").select("rating").eq("guest_id", userData.user.id);
+  ratingCount = ratings?.length ?? 0;
+  avgRating = ratingCount > 0 ? (ratings ?? []).reduce((s: number, r: any) => s + r.rating, 0) / ratingCount : 0;
+
+  const { data: bookingsRaw } = await supabaseAdmin
+    .from("bookings")
+    .select("status, check_in")
+    .eq("user_id", userData.user.id);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const totalCount = bookingsRaw?.length ?? 0;
+  const upcomingCount = (bookingsRaw ?? []).filter((b: any) => b.status === "confirmed" && b.check_in >= today).length;
+  const pendingCount = (bookingsRaw ?? []).filter((b: any) => b.status === "pending").length;
+
+  stats = [
+    { label: "Reservas totales", value: totalCount, color: "text-neutral-900 dark:text-white" },
+    { label: "Próximas", value: upcomingCount, color: "text-blue-500" },
+    { label: "Pendientes de confirmación", value: pendingCount, color: "text-amber-500" },
+  ];
+  quickLinks = [
+    { href: "/mis-reservas/", icon: "📅", label: "Mis reservas", hint: "Ver el detalle de todas tus reservas." },
+    { href: "/carrito/", icon: "🛒", label: "Carrito", hint: "Revisa y paga tus reservas pendientes." },
+    { href: "/ayuda/", icon: "💬", label: "Ayuda", hint: "Chatea en vivo con un administrador." },
+    { href: "/solicitar-rol/", icon: "🔁", label: "Quiero ser anfitrión", hint: "Solicita cambiar tu tipo de cuenta." },
+  ];
+}
+
+const displayName =
+  profile?.full_name ||
+  userData.user.user_metadata?.full_name ||
+  userData.user.user_metadata?.name ||
+  userData.user.email ||
+  "Sin nombre";
+
+const ROLE_LABELS: Record<string, string> = {
+  usuario: "Profesional de la salud",
+  anfitrion: "Anfitrión",
+};
+---
+
+<BaseLayout title="Mi perfil">
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-28">
+    <h1 class="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight mb-4">Mi perfil</h1>
+
+    {/* Tabs: Editar perfil (esta página) / Ver perfil público */}
+    <div class="flex gap-2 mb-6 border-b border-neutral-200 dark:border-neutral-700">
+      <span class="px-4 py-2.5 text-sm font-semibold text-neutral-900 dark:text-white border-b-2 border-neutral-900 dark:border-white">
+        Editar perfil
+      </span>
+      <a
+        href={`/perfil/${userData.user.id}/`}
+        class="px-4 py-2.5 text-sm font-medium text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+      >
+        Ver perfil público
+      </a>
+    </div>
+
+    <div class="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6 mb-8 text-center">
+      {profile?.avatar_url ? (
+        <img
+          src={profile.avatar_url}
+          alt={displayName}
+          class="w-24 h-24 rounded-full object-cover mx-auto"
+        />
+      ) : (
+        <div class="w-24 h-24 rounded-full mx-auto flex items-center justify-center text-2xl font-bold text-white bg-neutral-400 dark:bg-neutral-700">
+          {displayName.charAt(0).toUpperCase()}
+        </div>
+      )}
+      <h2 class="text-xl font-bold text-neutral-900 dark:text-white mt-3">{displayName}</h2>
+      <p class="text-sm text-neutral-500 dark:text-neutral-400">{ROLE_LABELS[role]}</p>
+
+      <div class="flex justify-center mt-3">
+        <StarRatingDisplay rating={avgRating} count={ratingCount} size="md" />
+      </div>
+
+      {profile?.bio && (
+        <p class="text-sm text-neutral-700 dark:text-neutral-300 mt-4 max-w-md mx-auto leading-relaxed">
+          {profile.bio}
+        </p>
+      )}
+
+      <div class="mt-5">
+        <EditProfileModalTrigger
+          client:load
+          userId={userData.user.id}
+          initialAvatar={profile?.avatar_url ?? null}
+          initialBio={profile?.bio ?? ""}
+        />
+      </div>
+    </div>
+
+    {/* STATS (lo que antes vivía en /dashboard/ o /mis-propiedades/) */}
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+      {stats.map((s) => (
+        <div class="bg-white dark:bg-neutral-900 rounded-xl p-4 shadow-sm border border-neutral-200 dark:border-neutral-700">
+          <p class="text-xs text-neutral-500 dark:text-neutral-400">{s.label}</p>
+          <p class={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+        </div>
+      ))}
+    </div>
+
+    {/* ACCESOS RÁPIDOS */}
+    <div class={`grid grid-cols-1 sm:grid-cols-2 ${role === "anfitrion" ? "md:grid-cols-5" : "md:grid-cols-4"} gap-4`}>
+      {quickLinks.map((link) => (
+        <a
+          href={link.href}
+          class="block rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 hover:border-primary-400 dark:hover:border-primary-500 transition-colors"
+        >
+          <p class="font-semibold text-neutral-900 dark:text-white">{link.icon} {link.label}</p>
+          <p class="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{link.hint}</p>
+        </a>
+      ))}
+    </div>
+  </main>
+</BaseLayout>

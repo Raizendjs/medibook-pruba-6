@@ -1,0 +1,16 @@
+---
+const role = Astro.locals.role;
+
+if (!Astro.locals.user) {
+  return Astro.redirect("/login/");
+}
+
+switch (role) {
+  case "administrador":
+    return Astro.redirect("/admin/");
+  case "anfitrion":
+  case "usuario":
+  default:
+    return Astro.redirect("/perfil/");
+}
+---

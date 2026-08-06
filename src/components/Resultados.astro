@@ -1,0 +1,42 @@
+---
+const { dato1, text1, dato2, text2, dato3, text3, spam } = Astro.props;
+---
+
+<section class="px-6 sm:px-10 xl:px-2 py-6 sm:py-20 xl:py-2 bg-dark border-t border-white/10">
+  <div class="max-w-11/12 mx-auto flex flex-col lg:flex-row items-start lg:items-center gap-10 lg:gap-0">
+
+    <!-- Left label -->
+    <div class="lg:w-120 xl:w-160 shrink-0 lg:pr-12 xl:pr-16">
+      <p class="text-red-500 text-xs font-bold tracking-widest uppercase mb-3">05 ——</p>
+      <h2 class="text-3xl sm:text-4xl xl:text-5xl font-black uppercase dark:text-white leading-tight">
+        RESULTADOS QUE<br /><span class="text-red-500">HABLAN</span> POR SÍ SOLOS
+      </h2>
+      <p class="dark:text-white/40 text-xs mt-4 leading-relaxed">
+        Hablemos de tu idea y construyamos algo increíble juntos.
+      </p>
+    </div>
+
+    <!-- Divider vertical (solo desktop) -->
+    <div class="hidden lg:block w-px self-stretch bg-white/10 shrink-0 mx-10 xl:mx-14"></div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-8 sm:gap-10 lg:gap-0 flex-1 w-full">
+
+      <div class="flex flex-col lg:px-8 xl:px-10 lg:border-l lg:border-white/[0.08] lg:first:border-l-0 lg:first:pl-0">
+        <span class="text-5xl sm:text-6xl xl:text-7xl font-black dark:text-white leading-none">{dato1}</span>
+        <span class="dark:text-white/40 text-xs mt-2 leading-relaxed max-w-[140px]">{text1}</span>
+      </div>
+
+      <div class="flex flex-col lg:px-8 xl:px-10 lg:border-l lg:border-white/[0.08]">
+        <span class="text-5xl sm:text-6xl xl:text-7xl font-black dark:text-white leading-none">{dato2}</span>
+        <span class="dark:text-white/40 text-xs mt-2 leading-relaxed max-w-[140px]">{text2}</span>
+      </div>
+
+      <div class="flex flex-col col-span-2 sm:col-span-1 lg:px-8 xl:px-10 lg:border-l lg:border-white/[0.08]">
+        <span class="text-5xl sm:text-6xl xl:text-7xl font-black dark:text-white leading-none">{dato3}</span>
+        <span class="dark:text-white/40 text-xs mt-2 leading-relaxed max-w-[140px]">{text3}</span>
+      </div>
+
+    </div>
+  </div>
+</section>

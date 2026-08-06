@@ -1,0 +1,121 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import AdminChatList from "../../../components/chat/AdminChatList";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData } = await supabaseServer.auth.getUser();
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers();
+const authUsers = authUsersData?.users ?? [];
+const usersById = new Map(authUsers.map((u) => [u.id, u]));
+
+function nameFor(u: any) {
+  if (!u) return "Desconocido";
+  return u.user_metadata?.full_name || u.user_metadata?.name || u.email || "Desconocido";
+}
+function avatarFor(u: any) {
+  return u?.user_metadata?.avatar_url || u?.user_metadata?.picture || null;
+}
+
+const { data: pendingRaw, error: pendingError } = await supabaseServer
+  .from("conversations")
+  .select("id, requester_id, reason, created_at")
+  .eq("status", "pending")
+  .order("created_at", { ascending: true });
+
+const pending = (pendingRaw ?? []).map((c: any) => ({
+  ...c,
+  requesterName: nameFor(usersById.get(c.requester_id)),
+  requesterAvatar: avatarFor(usersById.get(c.requester_id)),
+}));
+
+const { data: activeRaw, error: activeError } = await supabaseServer
+  .from("conversations")
+  .select("id, requester_id, admin_id, created_at")
+  .eq("status", "active")
+  .order("created_at", { ascending: false });
+
+const active = (activeRaw ?? []).map((c: any) => ({
+  ...c,
+  requesterName: nameFor(usersById.get(c.requester_id)),
+  requesterAvatar: avatarFor(usersById.get(c.requester_id)),
+  adminName: nameFor(usersById.get(c.admin_id)),
+  isMine: c.admin_id === userData.user?.id,
+}));
+
+// Solo se ofrece iniciar chat directo con usuarios/anfitriones (no otros admins)
+const { data: profiles } = await supabaseServer.from("profiles").select("id, role");
+const roleById = new Map((profiles ?? []).map((p) => [p.id, p.role]));
+
+const userOptions = authUsers
+  .filter((u) => roleById.get(u.id) !== "administrador")
+  .map((u) => ({ id: u.id, name: nameFor(u), email: u.email ?? null }));
+---
+
+<BaseLayout title="Chats — Admin" description="Gestión de chats de soporte">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+    <div>
+      <a href="/admin/" class="text-sm text-slate-500 hover:underline">← Panel de administrador</a>
+      <h1 class="text-2xl font-bold mt-2">💬 Chats de soporte</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Toma solicitudes pendientes o empieza un chat directo con quien
+        quieras.
+      </p>
+    </div>
+
+    {(pendingError || activeError) && (
+      <div class="rounded-xl border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30 p-4 text-sm text-red-700 dark:text-red-300">
+        Hubo un error cargando los chats: {pendingError?.message ?? activeError?.message}.
+        Asegúrate de haber corrido la migración <code>006_estado_usuarios_y_chat.sql</code> en Supabase.
+      </div>
+    )}
+
+    <AdminChatList client:load adminId={userData.user!.id} initialPending={pending} users={userOptions} />
+
+    <section>
+      <h2 class="text-lg font-bold mb-3">Conversaciones activas</h2>
+      {active.length === 0 ? (
+        <p class="text-sm text-slate-500">No hay conversaciones activas todavía.</p>
+      ) : (
+        <div class="grid sm:grid-cols-2 gap-3">
+          {active.map((c) => (
+            <a
+              href={`/admin/chats/${c.id}/`}
+              class="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-primary-400 hover:shadow-sm transition"
+            >
+              {c.requesterAvatar ? (
+                <img src={c.requesterAvatar} referrerpolicy="no-referrer" class="w-11 h-11 rounded-full object-cover" alt={c.requesterName} />
+              ) : (
+                <div class="w-11 h-11 rounded-full bg-gradient-to-br from-primary-500 to-indigo-500 text-white flex items-center justify-center font-semibold">
+                  {c.requesterName?.[0]?.toUpperCase()}
+                </div>
+              )}
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium truncate">{c.requesterName}</p>
+                <p class="text-xs text-slate-500">Atendido por: {c.adminName}{c.isMine && " (tú)"}</p>
+              </div>
+              <span class="text-xs text-primary-600 shrink-0">Ver →</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
+  </main>
+</div>
+</BaseLayout>

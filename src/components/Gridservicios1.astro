@@ -1,0 +1,57 @@
+---
+const {
+  number = "01",
+  title = "Content Series",
+  description = "Narrativas audiovisuales que posicionan tu marca en la conversación pública.",
+  buttonText = "Ver servicio",
+  image = "/hero.jpg"
+} = Astro.props;
+---
+
+<section class="w-full max-w-10/12 mx-auto px-6 py-16">
+  <div class="grid grid-cols-1 lg:grid-cols-2 items-center gap-10">
+
+    <!-- LEFT CONTENT -->
+    <div class="space-y-5">
+      <!-- Number -->
+      <div class="flex items-center gap-4">
+        <span class="text-red-500 font-semibold">{number}</span>
+        <div class="h-[2px] w-12 bg-red-200"></div>
+      </div>
+
+      <!-- Title -->
+      <h2 class="text-4xl md:text-5xl font-bold text-gray-900">
+        {title}
+      </h2>
+
+      <!-- Description -->
+      <p class="text-gray-600 text-base md:text-lg max-w-md">
+        {description}
+      </p>
+
+      <!-- Button -->
+      <a
+        href="#"
+        class="inline-flex items-center gap-2 text-red-500 font-medium hover:gap-3 transition-all duration-300"
+      >
+        {buttonText}
+        <span>→</span>
+      </a>
+    </div>
+
+    <!-- RIGHT IMAGE -->
+    <div class="relative">
+      <div class="rounded-2xl overflow-hidden shadow-2xl">
+        <img
+          src={image}
+          alt={title}
+          class="w-full h-[420px] object-cover"
+        />
+      </div>
+
+      <!-- floating camera feel overlay -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent rounded-2xl"></div>
+    </div>
+
+  </div>
+</section>

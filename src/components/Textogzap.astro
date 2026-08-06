@@ -1,0 +1,287 @@
+---
+// HeroCopy.astro
+// Reemplaza BG_IMAGE_URL con tu imagen
+const BG_IMAGE_URL = "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1800&q=80";
+---
+
+<section
+  class="hero-copy"
+  id="hero-section"
+  style={`--bg-image: url('${BG_IMAGE_URL}')`}
+>
+  <!-- Background layers -->
+  <div class="bg-image" aria-hidden="true"></div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+  <div class="bg-grain" aria-hidden="true"></div>
+
+  <!-- Hint visual -->
+  <div class="hover-hint" id="hover-hint" aria-hidden="true">
+    <span class="hint-icon">◈</span>
+    <span class="hint-text">Pasa el cursor para descubrir</span>
+  </div>
+
+  <h2 id="animated-copy">
+    Diseñamos historias que generan posicionamiento y sitúan a las organizaciones donde importa: en la conversación pública estratégica.
+  </h2>
+</section>
+
+<style>
+  /* ─── Reset & base ─── */
+  .hero-copy {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 4rem;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  /* ─── Background image ─── */
+  .bg-image {
+    position: absolute;
+    inset: 0;
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    transform: scale(1.06);
+    transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+                filter 1.4s ease;
+    filter: brightness(0.35) saturate(0.6);
+    will-change: transform, filter;
+  }
+
+  .hero-copy:hover .bg-image {
+    transform: scale(1);
+    filter: brightness(0.22) saturate(0.4);
+  }
+
+  /* ─── Dark gradient overlay ─── */
+  .bg-overlay {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 50%, transparent 0%, rgba(0,0,0,0.55) 100%),
+      linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
+    z-index: 1;
+    transition: opacity 1s ease;
+  }
+
+  /* ─── Film grain ─── */
+  .bg-grain {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  /* ─── Hover hint ─── */
+  .hover-hint {
+    position: absolute;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.78rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 400;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+    animation: hint-pulse 3s ease-in-out infinite;
+  }
+
+  .hint-icon {
+    font-size: 1rem;
+    display: inline-block;
+    animation: hint-spin 6s linear infinite;
+  }
+
+  @keyframes hint-pulse {
+    0%, 100% { opacity: 0.5; }
+    50%       { opacity: 1;   }
+  }
+  @keyframes hint-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .hero-copy:hover .hover-hint {
+    opacity: 0;
+  }
+
+  /* ─── Heading ─── */
+  #animated-copy {
+    position: relative;
+    z-index: 10;
+    max-width: 1200px;
+    font-size: clamp(2.6rem, 4.8vw, 5rem);
+    line-height: 1.06;
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    color: #f0ede8;
+    /* Subtle text shadow for depth */
+    text-shadow: 0 2px 40px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ─── Letter spans ─── */
+  .gsap-letter {
+    display: inline-block;
+    opacity: 0;
+    will-change: transform, opacity, filter;
+  }
+
+  /* ─── Accent word ─── */
+  .accent-word {
+    display: inline-block;
+    background: linear-gradient(
+      90deg,
+      #22d3ee,
+      #3b82f6,
+      #8b5cf6,
+      #ec4899,
+      #22d3ee
+    );
+    background-size: 400% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 20px rgba(59, 130, 246, 0.7));
+  }
+
+  /* ─── Accessibility: reduced motion ─── */
+  @media (prefers-reduced-motion: reduce) {
+    .bg-image,
+    .bg-overlay,
+    .hover-hint,
+    .hint-icon {
+      transition: none;
+      animation: none;
+    }
+    .gsap-letter {
+      opacity: 1 !important;
+      transform: none !important;
+      filter: none !important;
+    }
+  }
+</style>
+
+<script>
+  import gsap from "gsap";
+
+  window.addEventListener("load", () => {
+    const section      = document.getElementById("hero-section");
+    const animatedCopy = document.getElementById("animated-copy");
+    if (!section || !animatedCopy) return;
+
+    // ── Build letter spans once ──────────────────────────────────────
+    const originalText = animatedCopy.textContent?.trim() ?? "";
+    const words = originalText.split(" ");
+    animatedCopy.innerHTML = "";
+
+    words.forEach((word, index) => {
+      const wordWrapper = document.createElement("span");
+      wordWrapper.style.display = "inline-block";
+
+      if (word.toLowerCase().includes("posicionamiento")) {
+        wordWrapper.classList.add("accent-word");
+      }
+
+      [...word].forEach((char) => {
+        const letter = document.createElement("span");
+        letter.classList.add("gsap-letter");
+        letter.textContent = char;
+        wordWrapper.appendChild(letter);
+      });
+
+      animatedCopy.appendChild(wordWrapper);
+      if (index < words.length - 1) {
+        animatedCopy.appendChild(document.createTextNode(" "));
+      }
+    });
+
+    // ── Accent word ambient animations ──────────────────────────────
+    gsap.to(".accent-word", {
+      backgroundPosition: "400% center",
+      duration: 8,
+      repeat: -1,
+      ease: "none",
+    });
+
+    gsap.to(".accent-word", {
+      scale: 1.03,
+      repeat: -1,
+      yoyo: true,
+      duration: 2.5,
+      ease: "sine.inOut",
+    });
+
+    gsap.to(".accent-word", {
+      filter: "drop-shadow(0 0 40px rgba(59,130,246,1))",
+      repeat: -1,
+      yoyo: true,
+      duration: 2,
+      ease: "sine.inOut",
+    });
+
+    // ── Hover: trigger animation on each mouseenter ──────────────────
+    let isAnimating = false;
+
+    const letters = () =>
+      document.querySelectorAll<HTMLElement>(".gsap-letter");
+
+    // Initial state: all hidden
+    gsap.set(letters(), { opacity: 0 });
+
+    section.addEventListener("mouseenter", () => {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      // Reset letters to start position
+      gsap.set(letters(), {
+        opacity: 0,
+        y: 220,
+        rotationX: -90,
+        rotation: () => gsap.utils.random(-80, 80),
+        scale: 0.15,
+        filter: "blur(20px)",
+      });
+
+      // Animate in
+      gsap.to(letters(), {
+        opacity: 1,
+        y: 0,
+        rotationX: 0,
+        rotation: 0,
+        scale: 1,
+        filter: "blur(0px)",
+        stagger: 0.035,
+        duration: 1.8,
+        ease: "power4.out",
+        onComplete: () => {
+          isAnimating = false;
+        },
+      });
+    });
+
+    // On mouseleave: fade letters out gently so the hint can reappear
+    section.addEventListener("mouseleave", () => {
+      // Don't interrupt an ongoing entrance animation
+      if (isAnimating) return;
+
+      gsap.to(letters(), {
+        opacity: 0,
+        y: -30,
+        filter: "blur(8px)",
+        stagger: 0.008,
+        duration: 0.6,
+        ease: "power2.in",
+      });
+    });
+  });
+</script>

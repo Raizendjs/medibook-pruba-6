@@ -1,0 +1,69 @@
+---
+// SearchFilterBar.astro
+// Barra de búsqueda de propiedades: ciudad y fecha (Medibookit opera solo
+// en Ecuador y por horas dentro de un mismo día, así que no tiene sentido
+// pedir país ni un rango de llegada/salida como en un alquiler vacacional
+// — el tipo de consultorio ya se filtra aparte con la barra de categorías).
+// Hace GET hacia `action` (por defecto /listings/) para que la propia
+// página de resultados lea los query params y filtre contra Supabase.
+// A propósito NO incluye selector de huéspedes.
+
+interface Props {
+  city?: string;
+  date?: string;
+  action?: string;
+}
+
+const {
+  city = "",
+  date = "",
+  action = "/listings/",
+} = Astro.props;
+---
+
+<form
+  method="GET"
+  action={action}
+  class="search-filter-bar relative mx-auto flex w-full max-w-2xl flex-col overflow-visible rounded-3xl border border-neutral-200 bg-white shadow-md shadow-black/5 md:flex-row md:items-stretch md:rounded-full dark:border-neutral-700 dark:bg-neutral-900"
+>
+  <div class="field flex-1 px-6 py-3 md:py-2.5 border-b md:border-b-0 md:border-r border-neutral-200 dark:border-neutral-700">
+    <label class="block text-[0.68rem] font-semibold text-neutral-900 dark:text-white" for="city">
+      Ciudad
+    </label>
+    <input
+      id="city"
+      name="city"
+      type="text"
+      value={city}
+      placeholder="Guayaquil, Quito, Cuenca..."
+      autocomplete="off"
+      class="w-full border-0 bg-transparent p-0 text-[0.85rem] text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:ring-0 dark:text-neutral-300"
+    />
+  </div>
+
+  <div class="field flex-1 px-6 py-3 md:py-2.5">
+    <label class="block text-[0.68rem] font-semibold text-neutral-900 dark:text-white" for="date">
+      Fecha
+    </label>
+    <input
+      id="date"
+      name="date"
+      type="date"
+      value={date}
+      class="w-full border-0 bg-transparent p-0 text-[0.85rem] text-neutral-700 focus:outline-none focus:ring-0 [color-scheme:light] dark:text-neutral-300"
+    />
+  </div>
+
+  <div class="flex items-center justify-center px-4 py-3 md:px-3 md:py-0">
+    <button
+      type="submit"
+      aria-label="Buscar"
+      class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#FF385C] text-white transition-transform duration-150 hover:scale-105 hover:bg-[#E31C5F] md:h-10 md:w-10"
+    >
+      <svg class="h-4 w-4 fill-none stroke-white stroke-[2.4]" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.3-4.3" />
+      </svg>
+    </button>
+  </div>
+</form>

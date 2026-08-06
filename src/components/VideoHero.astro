@@ -1,0 +1,248 @@
+---
+const image = "../../public/Foreverstudiocomunicacíon.webp";
+
+// 🔧 Configuración rápida del video
+const VIDEO_ID = "UPiRe_fxKSc";
+
+// Clip que se reproduce de fondo (en segundos).
+// Cambia estos dos números para elegir desde/hasta dónde se reproduce el loop.
+const BG_START = 12;
+const BG_END = 40; // pon 0 si quieres que se reproduzca el video completo
+---
+
+<section class="relative w-full h-[65vh] sm:h-[75vh] md:min-h-screen overflow-hidden">
+
+  <!-- Imagen poster: se ve mientras carga el video de fondo -->
+  <img
+    id="hero-poster"
+    src={image}
+    alt="Forever Studio"
+    class="absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-1000 z-0"
+  />
+
+  <!-- Video de fondo (silencioso, autoplay, sin controles) -->
+  <div
+    id="hero-video-wrapper"
+    class="absolute inset-0 w-full h-full overflow-hidden opacity-0 transition-opacity duration-1000 z-[1] pointer-events-none"
+  >
+    <div
+      id="hero-bg-player"
+      class="absolute top-1/2 left-1/2 w-[100vw] h-[56.25vw] min-h-full min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2"
+    ></div>
+  </div>
+
+  <!-- Degradado SOLO en desktop -->
+  <div
+    class="absolute inset-0 z-10 hidden md:block bg-gradient-to-r from-white via-white/60 dark:invert to-transparent"
+  ></div>
+
+  <!-- Contenido -->
+  <div
+    class="absolute inset-0 flex items-center md:items-end justify-center md:justify-end p-4 sm:p-8 md:p-16 lg:p-24 z-20"
+  >
+    <button
+      id="play-video"
+      class="group flex items-center gap-3 sm:gap-5 max-w-full"
+    >
+      <!-- Botón Play -->
+      <div class="relative flex-shrink-0">
+        <span
+          class="absolute inset-0 rounded-full border border-white animate-ping"
+        ></span>
+
+        <div
+          class="relative flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-white text-black transition duration-300 group-hover:scale-110"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class="h-5 w-5 sm:h-6 sm:w-6 ml-1"
+          >
+            <path d="M8 5.14v14l11-7-11-7z" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Texto -->
+      <div
+        class="text-left text-white max-w-[220px] sm:max-w-sm drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] md:drop-shadow-none"
+      >
+        <p class="text-xs sm:text-sm uppercase tracking-widest opacity-70">
+          Ver Video
+        </p>
+
+        <h3
+          class="text-base sm:text-xl md:text-2xl font-bold leading-tight"
+        >
+          Conoce Forever Studio
+        </h3>
+
+        <p class="text-xs sm:text-sm opacity-80">
+          En 50 segundos
+        </p>
+      </div>
+    </button>
+  </div>
+
+</section>
+
+<!-- Modal: igual que antes, video completo con sonido y controles -->
+<div
+  id="video-modal"
+  class="fixed inset-0 z-[9999] hidden bg-black/90 backdrop-blur-sm"
+>
+  <div class="flex h-full items-center justify-center p-4">
+    <div
+      class="relative w-full max-w-5xl"
+      style="max-height:80vh;"
+    >
+      <button
+        id="close-video"
+        class="absolute -top-12 right-0 text-3xl text-white"
+      >
+        ✕
+      </button>
+
+      <div class="overflow-hidden rounded-3xl shadow-2xl">
+        <div
+          class="relative w-full"
+          style="padding-top:56.25%;"
+        >
+          <iframe
+            id="video-frame"
+            class="absolute inset-0 w-full h-full"
+            src=""
+            allow="autoplay; encrypted-media"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ VIDEO_ID, BG_START, BG_END }}>
+  document.addEventListener("DOMContentLoaded", () => {
+    // ---------------------------------------------------------
+    // MODAL (clic en "Ver Video" → video completo con controles)
+    // ---------------------------------------------------------
+    const openBtn = document.getElementById("play-video");
+    const closeBtn = document.getElementById("close-video");
+    const modal = document.getElementById("video-modal");
+    const iframe = document.getElementById("video-frame");
+
+    const MODAL_VIDEO_URL = `https://www.youtube.com/embed/${VIDEO_ID}?autoplay=1&rel=0`;
+
+    function closeModal() {
+      modal?.classList.add("hidden");
+      if (iframe instanceof HTMLIFrameElement) iframe.src = "";
+      resumeBackground();
+    }
+
+    openBtn?.addEventListener("click", () => {
+      modal?.classList.remove("hidden");
+      if (iframe instanceof HTMLIFrameElement) iframe.src = MODAL_VIDEO_URL;
+      pauseBackground(); // evita que se escuchen dos videos a la vez
+    });
+
+    closeBtn?.addEventListener("click", closeModal);
+
+    modal?.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+
+    // ---------------------------------------------------------
+    // VIDEO DE FONDO (autoplay, silencioso, en loop entre BG_START y BG_END)
+    // ---------------------------------------------------------
+    let bgPlayer = null;
+    let bgReady = false;
+    let revealed = false;
+
+    function pauseBackground() {
+      if (bgReady && bgPlayer?.pauseVideo) bgPlayer.pauseVideo();
+    }
+
+    function resumeBackground() {
+      if (bgReady && bgPlayer?.playVideo) bgPlayer.playVideo();
+    }
+
+    function createBgPlayer() {
+      const playerVars = {
+        autoplay: 1,
+        mute: 1,
+        controls: 0,
+        disablekb: 1,
+        fs: 0,
+        rel: 0,
+        playsinline: 1,
+        modestbranding: 1,
+        iv_load_policy: 3,
+        start: BG_START,
+      };
+
+      // si BG_END es válido (> BG_START) le decimos a YouTube dónde cortar
+      if (BG_END && BG_END > BG_START) {
+        playerVars.end = BG_END;
+      }
+
+      bgPlayer = new window.YT.Player("hero-bg-player", {
+        videoId: VIDEO_ID,
+        playerVars,
+        events: {
+          onReady: (e) => {
+            bgReady = true;
+            e.target.mute();
+            // No llamamos a playVideo() aquí: ya viene con autoplay:1
+            // en playerVars. Llamarlo manualmente es justo lo que
+            // provoca que YouTube muestre ese ícono de play "fantasma".
+          },
+          onStateChange: (e) => {
+            // Empieza a reproducirse, pero esperamos un instante antes
+            // de revelar el video: justo en ese primer momento YouTube
+            // puede mostrar un parpadeo del ícono de play. Mientras
+            // esperamos, la imagen sigue tapando el video por completo.
+            if (e.data === window.YT.PlayerState.PLAYING && !revealed) {
+              revealed = true;
+              setTimeout(() => {
+                document
+                  .getElementById("hero-video-wrapper")
+                  ?.classList.remove("opacity-0");
+                document
+                  .getElementById("hero-poster")
+                  ?.classList.add("opacity-0");
+              }, 600);
+            }
+
+            // Cuando termina el clip (o llega a BG_END), regresamos
+            // a BG_START para que el loop sea siempre ese rango.
+            if (e.data === window.YT.PlayerState.ENDED) {
+              e.target.seekTo(BG_START, true);
+              e.target.playVideo();
+            }
+          },
+        },
+      });
+    }
+
+    function loadYouTubeAPI() {
+      if (window.YT && window.YT.Player) {
+        createBgPlayer();
+        return;
+      }
+
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+
+      // La API de YouTube llama a esta función global cuando está lista
+      window.onYouTubeIframeAPIReady = createBgPlayer;
+    }
+
+    loadYouTubeAPI();
+  });
+</script>

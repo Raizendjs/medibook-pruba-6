@@ -1,0 +1,377 @@
+---
+// BookingSlider.astro
+// Slider de alojamientos — conectado a Supabase.
+// Soporta múltiples instancias en la misma página sin conflictos.
+
+import { createSupabaseServerClient } from "../lib/supabase/server";
+
+interface Props {
+  limit?: number;
+  label?: string;
+  heading?: string;
+  city?: string;
+  zone?: string;
+  viewAllHref?: string;
+  viewAllLabel?: string;
+  hideIfEmpty?: boolean;
+}
+
+const {
+  limit = 12,
+  label = "Alojamientos disponibles",
+  heading = "Encuentra tu próxima estadía",
+  city,
+  zone,
+  viewAllHref,
+  viewAllLabel = "Ver todo",
+  hideIfEmpty = false,
+} = Astro.props;
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+let query = supabase
+  .from("listings")
+  .select(
+    "id, title, city, country, price, currency, created_at, listing_images(url, order_index)"
+  )
+  .eq("status", "active");
+
+if (city) {
+  query = query.ilike("city", city);
+}
+if (zone) {
+  query = query.eq("zone", zone);
+}
+
+const { data: listingsRaw, error } = await query
+  .order("created_at", { ascending: false })
+  .limit(limit);
+
+function getCoverUrl(listing: any) {
+  if (!listing.listing_images || listing.listing_images.length === 0) return null;
+  const sorted = [...listing.listing_images].sort(
+    (a: any, b: any) => a.order_index - b.order_index
+  );
+  return sorted[0].url;
+}
+
+const FOURTEEN_DAYS_MS = 1000 * 60 * 60 * 24 * 14;
+
+const stays = (listingsRaw ?? []).map((l: any) => {
+  const createdAt = new Date(l.created_at).getTime();
+  const isNew = Date.now() - createdAt < FOURTEEN_DAYS_MS;
+
+  return {
+    id: l.id,
+    title: l.title as string,
+    location: l.city ? `${l.city}, ${l.country}` : (l.country as string),
+    price: l.price as number,
+    currency: l.currency as string,
+    badge: isNew ? "Nuevo" : null,
+    image: getCoverUrl(l),
+    link: `/listings/${l.id}/`,
+  };
+});
+
+// Instancia única para no chocar con otros sliders en la misma página
+const instanceId = `stays-${Math.random().toString(36).slice(2, 9)}`;
+
+// Si no pasan viewAllHref, armamos una ruta razonable por defecto:
+// con city -> /listings/{ciudad}/ | sin city -> /listings/
+const resolvedViewAllHref =
+  viewAllHref ??
+  (city ? `/listings/${encodeURIComponent(city.toLowerCase())}/` : `/listings/`);
+---
+
+{(!hideIfEmpty || stays.length > 0) && (
+<section
+  class="stays-container relative w-full py-12 bg-white dark:bg-[#0B1120] transition-colors duration-500"
+  data-instance={instanceId}
+>
+  <div class="stays-header flex items-end justify-between px-5 pb-6 md:px-16">
+    <div>
+      <span class="label text-sm font-semibold uppercase tracking-[0.08em] text-[#C6482F] dark:text-[#F2A38A]">
+        {label}
+      </span>
+      <h2 class="heading mt-2 font-bold leading-[1.1] text-slate-900 dark:text-white text-[clamp(1.5rem,3.2vw,2.5rem)]">
+        {heading}
+      </h2>
+    </div>
+
+    {stays.length > 0 && (
+      <div class="hidden md:flex gap-2">
+        <button
+          class="nav-btn prev flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          aria-label="Anterior"
+        >
+          &#8592;
+        </button>
+        <button
+          class="nav-btn next flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-400 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          aria-label="Siguiente"
+        >
+          &#8594;
+        </button>
+      </div>
+    )}
+  </div>
+
+  {error && (
+    <p class="px-5 md:px-16 text-sm text-[#FF385C]">
+      No se pudieron cargar los alojamientos. Intenta de nuevo más tarde.
+    </p>
+  )}
+
+  {!error && stays.length === 0 && (
+    <div class="px-5 md:px-16 py-10 text-center">
+      <p class="text-slate-900 dark:text-white font-semibold">
+        Aún no hay alojamientos publicados
+      </p>
+      <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+        Vuelve pronto, estamos agregando nuevas propiedades.
+      </p>
+    </div>
+  )}
+
+  {!error && stays.length > 0 && (
+    <div
+      class="stays-slider flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory px-5 pb-4 md:px-16"
+    >
+      {stays.map((stay, index) => (
+        <a
+          href={stay.link}
+          class="stay-card group shrink-0 snap-start w-[240px] md:w-[268px] cursor-pointer"
+          data-index={index}
+        >
+          <div class="stay-media relative overflow-hidden rounded-2xl aspect-[4/3] bg-neutral-100 dark:bg-slate-800">
+            {stay.image ? (
+              <img
+                src={stay.image}
+                alt={stay.title}
+                loading="lazy"
+                class="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
+              />
+            ) : (
+              <div class="flex h-full w-full items-center justify-center text-slate-400 text-sm">
+                Sin foto
+              </div>
+            )}
+
+            {stay.badge && (
+              <span class="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-900 shadow-sm dark:bg-slate-900/90 dark:text-white">
+                {stay.badge}
+              </span>
+            )}
+
+            <button
+              class="fav-btn absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/10 backdrop-blur-sm transition-transform duration-150 hover:scale-110"
+              aria-label="Guardar en favoritos"
+              data-fav="false"
+            >
+              <svg class="heart-icon h-[18px] w-[18px] stroke-white stroke-[2] fill-transparent transition-all" viewBox="0 0 24 24">
+                <path d="M12 21s-7.5-4.6-10-9.1C.4 8.6 2 5 5.6 5c2 0 3.3 1 4.4 2.4C11.1 6 12.4 5 14.4 5 18 5 19.6 8.6 22 11.9 19.5 16.4 12 21 12 21z"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="stay-info mt-2.5">
+            <h3 class="truncate text-[0.92rem] font-semibold text-slate-900 dark:text-slate-50">
+              {stay.title}
+            </h3>
+
+            <p class="mt-0.5 truncate text-[0.85rem] text-slate-500 dark:text-slate-400">
+              {stay.location}
+            </p>
+
+            <p class="mt-1.5 text-[0.92rem] text-slate-900 dark:text-slate-50">
+              <span class="font-semibold">{stay.currency} {stay.price}</span>{" "}
+              <span class="text-slate-500 dark:text-slate-400">/ noche</span>
+            </p>
+          </div>
+        </a>
+      ))}
+
+      {stays.length > 0 && (
+        <a
+          href={resolvedViewAllHref}
+          class="view-all-card group shrink-0 snap-start w-[240px] md:w-[268px] cursor-pointer flex flex-col items-center justify-center text-center"
+        >
+          <div class="view-all-media relative w-full aspect-[4/3]">
+            {stays.slice(0, 3).map((stay, i) => (
+              <div
+                class={`view-all-photo absolute overflow-hidden rounded-2xl border-[3px] border-white dark:border-slate-900 view-all-photo-${i}`}
+              >
+                {stay.image ? (
+                  <img
+                    src={stay.image}
+                    alt=""
+                    loading="lazy"
+                    class="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div class="h-full w-full bg-neutral-100 dark:bg-slate-800"></div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <span class="mt-3 inline-flex items-center gap-1.5 text-[0.92rem] font-semibold text-slate-900 dark:text-slate-50 transition-transform duration-200 group-hover:translate-x-0.5">
+            {viewAllLabel}
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </span>
+        </a>
+      )}
+    </div>
+  )}
+</section>
+)}
+
+<script>
+  // Inicializa TODAS las instancias del slider en la página,
+  // cada una escaneada dentro de su propio contenedor (sin IDs globales).
+  function initStaysSliders() {
+    const containers = document.querySelectorAll<HTMLElement>(".stays-container");
+
+    containers.forEach((container) => {
+      const slider = container.querySelector<HTMLElement>(".stays-slider");
+      const nextBtn = container.querySelector<HTMLButtonElement>(".nav-btn.next");
+      const prevBtn = container.querySelector<HTMLButtonElement>(".nav-btn.prev");
+      const favButtons = container.querySelectorAll<HTMLButtonElement>(".fav-btn");
+
+      if (!slider) return;
+
+      // Evita re-bindear listeners si astro:page-load dispara de nuevo
+      if (slider.dataset.initialized === "true") return;
+      slider.dataset.initialized = "true";
+
+      nextBtn?.addEventListener("click", () => {
+        slider.scrollBy({ left: 320, behavior: "smooth" });
+      });
+
+      prevBtn?.addEventListener("click", () => {
+        slider.scrollBy({ left: -320, behavior: "smooth" });
+      });
+
+      favButtons.forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const isFav = btn.dataset.fav === "true";
+          btn.dataset.fav = isFav ? "false" : "true";
+          const icon = btn.querySelector<SVGElement>(".heart-icon");
+          if (icon) {
+            icon.classList.toggle("fill-[#E85D4E]", !isFav);
+            icon.classList.toggle("stroke-[#E85D4E]", !isFav);
+            icon.classList.toggle("stroke-white", isFav);
+          }
+        });
+      });
+    });
+  }
+
+  document.addEventListener("astro:page-load", initStaysSliders);
+</script>
+
+<script>
+  // Animación de entrada al hacer scroll (GSAP + ScrollTrigger)
+  // Requiere: npm install gsap
+  import gsap from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+  function initScrollAnimations() {
+    gsap.registerPlugin(ScrollTrigger);
+
+    const sections = document.querySelectorAll<HTMLElement>(".stays-container");
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    sections.forEach((section) => {
+      // Limpia triggers previos de esta sección (evita duplicados en navegación SPA)
+      ScrollTrigger.getAll().forEach((st) => {
+        if (st.trigger && section.contains(st.trigger as Node)) st.kill();
+      });
+
+      if (prefersReducedMotion) return;
+
+      const tl = gsap.timeline({
+        scrollTrigger: { trigger: section, start: "top 80%", once: true },
+        defaults: { ease: "power3.out" },
+      });
+
+      tl.from(section.querySelectorAll(".stays-header .label"), { opacity: 0, y: 14, duration: 0.5, clearProps: "all" })
+        .from(section.querySelectorAll(".stays-header .heading"), { opacity: 0, y: 20, duration: 0.6, clearProps: "all" }, "-=0.3")
+        .from(
+          section.querySelectorAll(".stay-card"),
+          { opacity: 0, y: 34, duration: 0.6, stagger: 0.08, clearProps: "all" },
+          "-=0.2"
+        );
+    });
+  }
+
+  document.addEventListener("astro:page-load", initScrollAnimations);
+</script>
+
+<style>
+  .stays-slider {
+    scrollbar-width: none;
+  }
+  .stays-slider::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Tarjeta "Ver todo" con fotos apiladas */
+  .view-all-photo {
+    width: 62%;
+    height: 62%;
+  }
+  .view-all-photo-0 {
+    top: 4%;
+    left: 4%;
+    transform: rotate(-6deg);
+    z-index: 1;
+  }
+  .view-all-photo-1 {
+    top: 6%;
+    right: 2%;
+    transform: rotate(5deg);
+    z-index: 2;
+  }
+  .view-all-photo-2 {
+    bottom: 2%;
+    left: 22%;
+    transform: rotate(-2deg);
+    z-index: 3;
+  }
+
+  .view-all-card:hover .view-all-photo-0 {
+    transform: rotate(-9deg) translateY(-2px);
+  }
+  .view-all-card:hover .view-all-photo-1 {
+    transform: rotate(8deg) translateY(-2px);
+  }
+  .view-all-card:hover .view-all-photo-2 {
+    transform: rotate(-4deg) translateY(2px);
+  }
+  .view-all-photo {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow:
+      0 8px 16px rgba(0, 0, 0, 0.18),
+      0 2px 4px rgba(0, 0, 0, 0.12);
+  }
+  .view-all-card:hover .view-all-photo {
+    box-shadow:
+      0 14px 26px rgba(0, 0, 0, 0.22),
+      0 4px 8px rgba(0, 0, 0, 0.14);
+  }
+  :global(.dark) .view-all-photo {
+    box-shadow:
+      0 8px 20px rgba(0, 0, 0, 0.5),
+      0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+</style>

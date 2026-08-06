@@ -1,0 +1,70 @@
+---
+interface Props {
+  id: string;
+  title: string;
+  city: string | null;
+  country: string;
+  price: number;
+  currency: string;
+  coverUrl: string | null;
+  distanceKm?: number | null;
+  rating?: number | null;
+  reviewCount?: number;
+}
+
+const {
+  id,
+  title,
+  city,
+  country,
+  price,
+  currency,
+  coverUrl,
+  distanceKm,
+  rating,
+  reviewCount = 0,
+} = Astro.props;
+---
+
+<a href={`/listings/${id}/`} class="group block">
+  <div class="relative aspect-square w-full overflow-hidden rounded-2xl bg-neutral-100">
+    {coverUrl ? (
+      <img
+        src={coverUrl}
+        alt={title}
+        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+      />
+    ) : (
+      <div class="flex h-full w-full items-center justify-center text-neutral-400 text-sm">
+        Sin foto
+      </div>
+    )}
+    {typeof distanceKm === "number" && (
+      <span class="absolute top-2 left-2 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-sm flex items-center gap-1">
+        📍 {distanceKm < 1 ? `${Math.round(distanceKm * 1000)} m` : `${distanceKm.toFixed(1)} km`}
+      </span>
+    )}
+  </div>
+
+  <div class="mt-2.5 space-y-0.5">
+    <div class="flex items-start justify-between gap-2">
+      <p class="text-sm font-semibold text-neutral-900 truncate">{title}</p>
+      <span class="shrink-0 text-sm text-neutral-900 flex items-center gap-1">
+        {rating ? (
+          <>★ {rating.toFixed(2)}</>
+        ) : (
+          <span class="text-neutral-500">Nuevo</span>
+        )}
+      </span>
+    </div>
+    <p class="text-sm text-neutral-500">
+      {city ? `${city}, ${country}` : country}
+      {rating && reviewCount > 0 && <span> · {reviewCount} reseña{reviewCount === 1 ? "" : "s"}</span>}
+    </p>
+    <p class="text-sm text-neutral-900 mt-1">
+      <span class="font-semibold">{currency} {price}</span>
+      <span class="text-neutral-500"> / hora</span>
+    </p>
+  </div>
+</a>

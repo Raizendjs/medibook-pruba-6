@@ -1,0 +1,473 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ListingCard from "../../components/ListingCard.astro";
+import SearchFilterBar from "../../components/SearchFilterBar.astro";
+import CategoryBar from "../../components/CategoryBar.astro";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+import { GUAYAQUIL_ZONES } from "../../lib/guayaquilZones";
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const city = Astro.url.searchParams.get("city") ?? "";
+const zone = Astro.url.searchParams.get("zone") ?? "";
+const category = Astro.url.searchParams.get("category") ?? "";
+const date = Astro.url.searchParams.get("date") ?? "";
+const minPrice = Astro.url.searchParams.get("min_price") ?? "";
+const maxPrice = Astro.url.searchParams.get("max_price") ?? "";
+const sort = Astro.url.searchParams.get("sort") ?? "recent";
+
+const nearLatParam = Astro.url.searchParams.get("near_lat");
+const nearLngParam = Astro.url.searchParams.get("near_lng");
+const nearLat = nearLatParam ? parseFloat(nearLatParam) : null;
+const nearLng = nearLngParam ? parseFloat(nearLngParam) : null;
+const hasUserLocation = nearLat !== null && nearLng !== null && !Number.isNaN(nearLat) && !Number.isNaN(nearLng);
+
+let excludedListingIds: string[] = [];
+
+if (date) {
+  // Medibookit reserva por horas dentro de un mismo día — alcanza con
+  // buscar disponibilidad para UNA fecha, no un rango de llegada/salida
+  // como en un alquiler vacacional.
+  const { data: overlapping, error: overlapError } = await supabase
+    .from("bookings")
+    .select("listing_id")
+    .neq("status", "cancelled")
+    .lte("check_in", date)
+    .gte("check_out", date);
+
+  if (!overlapError && overlapping) {
+    excludedListingIds = [...new Set(overlapping.map((b) => b.listing_id as string))];
+  }
+}
+
+let query = supabase
+  .from("listings")
+  .select("id, title, city, country, price, currency, lat, lng, category, zone, listing_images(url, order_index)")
+  .eq("status", "active");
+
+if (sort === "price_asc") {
+  query = query.order("price", { ascending: true });
+} else if (sort === "price_desc") {
+  query = query.order("price", { ascending: false });
+} else {
+  query = query.order("created_at", { ascending: false });
+}
+
+if (city) query = query.ilike("city", `%${city}%`);
+if (zone) query = query.eq("zone", zone);
+if (category) query = query.eq("category", category);
+if (minPrice) query = query.gte("price", Number(minPrice));
+if (maxPrice) query = query.lte("price", Number(maxPrice));
+if (excludedListingIds.length > 0) {
+  query = query.not("id", "in", `(${excludedListingIds.join(",")})`);
+}
+
+const { data: rawListings, error } = await query;
+
+// Reseñas: promedio y conteo por propiedad, en una sola consulta.
+const listingIds = (rawListings ?? []).map((l: any) => l.id);
+let ratingsByListing: Record<string, { avg: number; count: number }> = {};
+
+if (listingIds.length > 0) {
+  const { data: reviewsData } = await supabase
+    .from("reviews")
+    .select("listing_id, rating")
+    .in("listing_id", listingIds);
+
+  (reviewsData ?? []).forEach((r: any) => {
+    const bucket = ratingsByListing[r.listing_id] ?? { avg: 0, count: 0 };
+    bucket.avg = (bucket.avg * bucket.count + r.rating) / (bucket.count + 1);
+    bucket.count += 1;
+    ratingsByListing[r.listing_id] = bucket;
+  });
+}
+
+function getCoverUrl(listing: any) {
+  if (!listing.listing_images || listing.listing_images.length === 0) return null;
+  const sorted = [...listing.listing_images].sort(
+    (a: any, b: any) => a.order_index - b.order_index
+  );
+  return sorted[0].url;
+}
+
+function distanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+let listings = (rawListings ?? []).map((l: any) => ({
+  ...l,
+  coverUrl: getCoverUrl(l),
+  rating: ratingsByListing[l.id]?.avg ?? null,
+  reviewCount: ratingsByListing[l.id]?.count ?? 0,
+  distanceKm: hasUserLocation && l.lat != null && l.lng != null
+    ? distanceKm(nearLat as number, nearLng as number, l.lat, l.lng)
+    : null,
+}));
+
+if (hasUserLocation) {
+  listings = listings.sort((a: any, b: any) => {
+    if (a.distanceKm == null) return 1;
+    if (b.distanceKm == null) return -1;
+    return a.distanceKm - b.distanceKm;
+  });
+}
+
+const hasFilters = Boolean(city || zone || category || date || minPrice || maxPrice);
+
+const mapPoints = listings
+  .filter((l: any) => l.lat != null && l.lng != null)
+  .map((l: any) => ({
+    id: l.id,
+    title: l.title,
+    price: l.price,
+    currency: l.currency,
+    lat: l.lat,
+    lng: l.lng,
+    coverUrl: l.coverUrl,
+    rating: l.rating,
+    reviewCount: l.reviewCount,
+  }));
+---
+
+<BaseLayout title="Explora propiedades">
+  <CategoryBar />
+  <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight mb-6 text-center lg:text-left">
+      Encuentra tu próximo lugar
+    </h1>
+
+    <div class="mb-4">
+      <SearchFilterBar city={city} date={date} />
+    </div>
+
+    <form method="GET" action="/listings/" class="mb-4 flex flex-wrap items-end justify-center lg:justify-start gap-3">
+      {city && <input type="hidden" name="city" value={city} />}
+      {date && <input type="hidden" name="date" value={date} />}
+      {category && <input type="hidden" name="category" value={category} />}
+      {hasUserLocation && <input type="hidden" name="near_lat" value={String(nearLat)} />}
+      {hasUserLocation && <input type="hidden" name="near_lng" value={String(nearLng)} />}
+
+      <div>
+        <label class="block text-[0.68rem] font-semibold text-neutral-900 dark:text-white mb-1">Zona</label>
+        <select
+          name="zone"
+          class="rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm px-3 py-2"
+        >
+          <option value="">Todas las zonas</option>
+          {GUAYAQUIL_ZONES.map((z) => (
+            <option value={z.value} selected={zone === z.value}>{z.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-[0.68rem] font-semibold text-neutral-900 dark:text-white mb-1">Precio mín. (USD/hora)</label>
+        <input
+          type="number"
+          name="min_price"
+          min="0"
+          value={minPrice}
+          placeholder="0"
+          class="w-28 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm px-3 py-2"
+        />
+      </div>
+
+      <div>
+        <label class="block text-[0.68rem] font-semibold text-neutral-900 dark:text-white mb-1">Precio máx. (USD/hora)</label>
+        <input
+          type="number"
+          name="max_price"
+          min="0"
+          value={maxPrice}
+          placeholder="Sin límite"
+          class="w-28 rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm px-3 py-2"
+        />
+      </div>
+
+      <div>
+        <label class="block text-[0.68rem] font-semibold text-neutral-900 dark:text-white mb-1">Ordenar por</label>
+        <select
+          name="sort"
+          class="rounded-xl border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white text-sm px-3 py-2"
+        >
+          <option value="recent" selected={sort === "recent"}>Más recientes</option>
+          <option value="price_asc" selected={sort === "price_asc"}>Precio: menor a mayor</option>
+          <option value="price_desc" selected={sort === "price_desc"}>Precio: mayor a menor</option>
+        </select>
+      </div>
+
+      <button
+        type="submit"
+        class="rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-semibold px-5 py-2 h-fit"
+      >
+        Aplicar
+      </button>
+    </form>
+
+    <div class="mb-6 flex flex-wrap items-center justify-center lg:justify-start gap-3">
+      {hasFilters && (
+        <a
+          href="/listings/"
+          class="rounded-full border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white text-sm font-medium px-4 py-2 hover:border-neutral-900 dark:hover:border-white transition-colors"
+        >
+          Limpiar filtros
+        </a>
+      )}
+
+      <button
+        type="button"
+        id="near-me-btn"
+        class="rounded-full border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white text-sm font-medium px-4 py-2 hover:border-neutral-900 dark:hover:border-white transition-colors flex items-center gap-1.5"
+      >
+        <span id="near-me-icon">📍</span>
+        <span id="near-me-label">{hasUserLocation ? "Actualizar mi ubicación" : "Cerca de mí"}</span>
+      </button>
+
+      {hasUserLocation && (
+        <a
+          href={(() => {
+            const u = new URL(Astro.url);
+            u.searchParams.delete("near_lat");
+            u.searchParams.delete("near_lng");
+            return u.pathname + u.search;
+          })()}
+          class="rounded-full border border-neutral-300 dark:border-neutral-600 text-neutral-900 dark:text-white text-sm font-medium px-4 py-2 hover:border-neutral-900 dark:hover:border-white transition-colors"
+        >
+          ✕ Quitar "cerca de mí"
+        </a>
+      )}
+    </div>
+
+    <div id="near-me-error" class="hidden mb-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-900/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300 text-center lg:text-left"></div>
+
+    <script type="application/json" id="map-points-data" set:html={JSON.stringify(mapPoints)} />
+    <script type="application/json" id="user-location-data" set:html={JSON.stringify(hasUserLocation ? { lat: nearLat, lng: nearLng } : null)} />
+
+    {error && (
+      <p class="text-sm text-[#FF385C]">Hubo un error cargando las propiedades. Intenta de nuevo.</p>
+    )}
+
+    {!error && listings && listings.length === 0 && (
+      <div class="text-center py-20">
+        <p class="text-neutral-900 dark:text-white font-semibold">No encontramos propiedades</p>
+        <p class="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
+          {date
+            ? "No hay disponibilidad para esa fecha. Prueba con otra o quita algún filtro."
+            : "Prueba con otros filtros o quita alguno."}
+        </p>
+      </div>
+    )}
+
+    {!error && listings && listings.length > 0 && (
+      <!-- Layout estilo Airbnb: lista a la izquierda, mapa fijo a la derecha -->
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_480px] gap-6 items-start">
+        <div id="listings-grid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-3 gap-x-4 gap-y-8">
+          {listings.map((listing: any) => (
+            <ListingCard
+              id={listing.id}
+              title={listing.title}
+              city={listing.city}
+              country={listing.country}
+              price={listing.price}
+              currency={listing.currency}
+              coverUrl={listing.coverUrl}
+              distanceKm={listing.distanceKm}
+              rating={listing.rating}
+              reviewCount={listing.reviewCount}
+            />
+          ))}
+        </div>
+
+        <!-- Mapa: sticky, siempre visible, nunca se oculta -->
+        <div class="order-first lg:order-last lg:sticky lg:top-6">
+          <div class="rounded-2xl overflow-hidden border border-neutral-200 dark:border-neutral-700">
+            <div id="listings-map" class="relative isolate w-full h-[320px] lg:h-[calc(100vh-140px)]" data-listing-map />
+          </div>
+        </div>
+      </div>
+    )}
+  </main>
+</BaseLayout>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<script>
+  function getMapPoints(): any[] {
+    const el = document.getElementById("map-points-data");
+    if (!el) return [];
+    try {
+      return JSON.parse(el.textContent || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function getUserLocation(): { lat: number; lng: number } | null {
+    const el = document.getElementById("user-location-data");
+    if (!el) return null;
+    try {
+      return JSON.parse(el.textContent || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function initListingsMap() {
+    const container = document.getElementById("listings-map") as (HTMLElement & { _leafletMap?: any }) | null;
+    const L = (window as any).L;
+    if (!container || !L) return;
+
+    if (container._leafletMap) {
+      container._leafletMap.remove();
+      container._leafletMap = undefined;
+    }
+
+    const points = getMapPoints();
+    const userLocation = getUserLocation();
+
+    const center = userLocation
+      ? [userLocation.lat, userLocation.lng]
+      : points.length > 0
+        ? [points[0].lat, points[0].lng]
+        : [-1.8312, -78.1834]; // Ecuador, centrado por defecto
+
+    const map = L.map(container, {
+      center,
+      zoom: userLocation ? 13 : points.length > 0 ? 12 : 7,
+      zoomControl: true,
+      attributionControl: true,
+    });
+    container._leafletMap = map;
+
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; OpenStreetMap &copy; CARTO",
+      maxZoom: 19,
+    }).addTo(map);
+
+    if (userLocation) {
+      const userIcon = L.divIcon({
+        className: "",
+        html: '<div style="width:16px;height:16px;border-radius:9999px;background:#2563eb;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
+        .addTo(map)
+        .bindPopup("Tu ubicación");
+    }
+
+    const bounds: [number, number][] = userLocation ? [[userLocation.lat, userLocation.lng]] : [];
+
+    points.forEach((p) => {
+      const priceIcon = L.divIcon({
+        className: "",
+        html: `<div style="background:#111827;color:white;font-size:11px;font-weight:600;padding:4px 8px;border-radius:9999px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.3)">${p.currency} ${p.price}</div>`,
+        iconSize: undefined,
+        iconAnchor: [20, 10],
+      });
+
+      const ratingHtml = p.rating
+        ? `★ ${p.rating.toFixed(2)} (${p.reviewCount})`
+        : "Nuevo";
+
+      const popupHtml = `
+        <a href="/listings/${p.id}/" style="display:block;width:200px;text-decoration:none;color:inherit;font-family:inherit">
+          ${p.coverUrl ? `<img src="${p.coverUrl}" style="width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:6px" />` : ""}
+          <div style="font-size:13px;font-weight:600;color:#111827;line-height:1.3">${p.title}</div>
+          <div style="font-size:12px;color:#6b7280;margin-top:2px">${ratingHtml}</div>
+          <div style="font-size:13px;color:#111827;margin-top:4px"><strong>${p.currency} ${p.price}</strong> / hora</div>
+        </a>
+      `;
+
+      const marker = L.marker([p.lat, p.lng], { icon: priceIcon }).addTo(map);
+      marker.bindPopup(popupHtml, { closeButton: true, maxWidth: 220 });
+      bounds.push([p.lat, p.lng]);
+    });
+
+    if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+  }
+
+  function setupNearMeButton() {
+    const btn = document.getElementById("near-me-btn");
+    const errorEl = document.getElementById("near-me-error");
+    if (!btn || btn.dataset.bound === "true") return;
+    btn.dataset.bound = "true";
+
+    btn.addEventListener("click", () => {
+      const label = document.getElementById("near-me-label");
+      const icon = document.getElementById("near-me-icon");
+      if (errorEl) {
+        errorEl.classList.add("hidden");
+        errorEl.textContent = "";
+      }
+
+      if (!window.isSecureContext) {
+        if (errorEl) {
+          errorEl.textContent =
+            "Tu navegador solo permite compartir tu ubicación en sitios con https:// (o en localhost). Revisa que estés entrando por una URL segura.";
+          errorEl.classList.remove("hidden");
+        }
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        if (errorEl) {
+          errorEl.textContent = "Tu navegador no soporta geolocalización.";
+          errorEl.classList.remove("hidden");
+        }
+        return;
+      }
+
+      if (icon) icon.textContent = "⏳";
+      if (label) label.textContent = "Buscando tu ubicación...";
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const url = new URL(window.location.href);
+          url.searchParams.set("near_lat", String(latitude));
+          url.searchParams.set("near_lng", String(longitude));
+          window.location.href = url.toString();
+        },
+        (err) => {
+          if (icon) icon.textContent = "📍";
+          if (label) label.textContent = "Cerca de mí";
+          if (errorEl) {
+            let msg = "No pudimos obtener tu ubicación. Revisa los permisos del navegador.";
+            if (err.code === err.PERMISSION_DENIED) {
+              msg =
+                "Bloqueaste el permiso de ubicación para este sitio. Ábrelo en el ícono 🔒/ⓘ junto a la dirección del navegador, activa \"Ubicación\" y vuelve a intentar.";
+            } else if (err.code === err.TIMEOUT) {
+              msg = "Tardó demasiado en obtener tu ubicación. Intenta de nuevo o revisa tu GPS/wifi.";
+            } else if (err.code === err.POSITION_UNAVAILABLE) {
+              msg = "Tu dispositivo no pudo determinar tu ubicación en este momento.";
+            }
+            errorEl.textContent = msg;
+            errorEl.classList.remove("hidden");
+          }
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+      );
+    });
+  }
+
+  function init() {
+    setupNearMeButton();
+    initListingsMap();
+  }
+
+  init();
+  document.addEventListener("astro:page-load", init);
+</script>

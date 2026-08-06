@@ -1,0 +1,30 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import SubscriptionCard from "../components/SubscriptionCard";
+import { createSupabaseServerClient } from "../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({ request: Astro.request, cookies: Astro.cookies });
+const { data: userData } = await supabase.auth.getUser();
+if (!userData.user) return Astro.redirect("/login/");
+
+const { data: subscription } = await supabase
+  .from("subscriptions")
+  .select("plan, status, current_period_end")
+  .eq("host_id", userData.user.id)
+  .maybeSingle();
+---
+
+<BaseLayout title="Mi suscripción" description="Elige cómo quieres pagar por usar Medibookit">
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-28">
+    <h1 class="text-2xl font-bold text-neutral-900 tracking-tight mb-2 dark:text-white">Tu plan</h1>
+    <p class="text-sm text-neutral-500 mb-8 dark:text-neutral-400">
+      Elige cómo prefieres pagar por usar Medibookit.
+    </p>
+
+    <SubscriptionCard
+      client:load
+      currentPlan={(subscription?.plan as "monthly" | "per_transaction") ?? null}
+      currentPeriodEnd={subscription?.current_period_end ?? null}
+    />
+  </main>
+</BaseLayout>

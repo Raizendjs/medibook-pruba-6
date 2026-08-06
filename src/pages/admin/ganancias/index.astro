@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: paymentsRaw } = await supabaseAdmin
+  .from("payments")
+  .select("id, user_id, amount, currency, status, kushki_transaction_id, created_at")
+  .order("created_at", { ascending: false })
+  .limit(100);
+
+const payments = paymentsRaw ?? [];
+
+const approved = payments.filter((p) => p.status === "approved");
+const declined = payments.filter((p) => p.status === "declined");
+const totalRevenue = approved.reduce((sum, p) => sum + Number(p.amount), 0);
+const currency = approved[0]?.currency ?? "USD";
+
+const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers();
+const usersById = new Map((authUsersData?.users ?? []).map((u) => [u.id, u]));
+
+function nameFor(id: string) {
+  const u = usersById.get(id);
+  return u?.user_metadata?.full_name || u?.user_metadata?.name || u?.email || id;
+}
+
+// Ganancias por anfitrión: sumamos bookings pagados agrupando por host
+const { data: hostBookingsRaw } = await supabaseAdmin
+  .from("bookings")
+  .select("total_price, listings(host_id), payments!inner(status)")
+  .eq("payments.status", "approved");
+
+const byHost = new Map<string, number>();
+for (const b of hostBookingsRaw ?? []) {
+  const hostId = (b as any).listings?.host_id;
+  if (!hostId) continue;
+  byHost.set(hostId, (byHost.get(hostId) ?? 0) + Number((b as any).total_price));
+}
+---
+
+<BaseLayout title="Ganancias — Admin" description="Ingresos generales de la plataforma">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+    <div>
+      <a href="/admin/" class="text-sm text-slate-500 hover:underline">← Panel de administrador</a>
+      <h1 class="text-2xl font-bold mt-2">💰 Ganancias</h1>
+      <p class="text-sm text-slate-500 mt-1">Vista general de todos los pagos procesados en la plataforma.</p>
+    </div>
+
+    <section class="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+        <p class="text-xs text-slate-500">Ingresos totales</p>
+        <p class="text-2xl font-bold text-green-600 dark:text-green-400">{currency} {totalRevenue.toFixed(2)}</p>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+        <p class="text-xs text-slate-500">Pagos aprobados</p>
+        <p class="text-2xl font-bold">{approved.length}</p>
+      </div>
+      <div class="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+        <p class="text-xs text-slate-500">Pagos rechazados</p>
+        <p class="text-2xl font-bold text-red-500">{declined.length}</p>
+      </div>
+    </section>
+
+    {byHost.size > 0 && (
+      <section>
+        <h2 class="text-lg font-bold mb-3">Ganancias por anfitrión</h2>
+        <div class="space-y-2">
+          {[...byHost.entries()].sort((a, b) => b[1] - a[1]).map(([hostId, total]) => (
+            <div class="flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm">
+              <span>{nameFor(hostId)}</span>
+              <span class="font-semibold">{currency} {total.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section>
+      <h2 class="text-lg font-bold mb-3">Transacciones ({payments.length})</h2>
+      {payments.length === 0 ? (
+        <p class="text-sm text-slate-500">Todavía no se ha procesado ningún pago.</p>
+      ) : (
+        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-left">
+              <tr>
+                <th class="px-4 py-2 font-medium">Usuario</th>
+                <th class="px-4 py-2 font-medium">Monto</th>
+                <th class="px-4 py-2 font-medium">Estado</th>
+                <th class="px-4 py-2 font-medium">Referencia</th>
+                <th class="px-4 py-2 font-medium">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((p) => (
+                <tr class="border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <td class="px-4 py-2">{nameFor(p.user_id)}</td>
+                  <td class="px-4 py-2">{p.currency} {p.amount}</td>
+                  <td class="px-4 py-2">
+                    <span class={`text-xs px-2 py-1 rounded-full ${
+                      p.status === "approved"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                    }`}>
+                      {p.status}
+                    </span>
+                  </td>
+                  <td class="px-4 py-2 text-slate-500">{p.kushki_transaction_id ?? "—"}</td>
+                  <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{new Date(p.created_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  </main>
+</div>
+</BaseLayout>

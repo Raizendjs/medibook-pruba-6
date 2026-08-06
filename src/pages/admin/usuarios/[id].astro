@@ -1,0 +1,171 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import AdminUserEdit from "../../../components/roles/AdminUserEdit";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const { id } = Astro.params;
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(id!);
+if (!authUser?.user) {
+  return Astro.redirect("/admin/usuarios/");
+}
+const targetUser = authUser.user;
+
+const { data: profile } = await supabaseServer
+  .from("profiles")
+  .select("role, full_name, avatar_url, status")
+  .eq("id", id)
+  .single();
+
+const displayName =
+  profile?.full_name || targetUser.user_metadata?.full_name || targetUser.user_metadata?.name || "Sin nombre";
+const avatarUrl = profile?.avatar_url || targetUser.user_metadata?.avatar_url || null;
+const role = profile?.role ?? "usuario";
+const status = (profile?.status ?? "activo") as "activo" | "suspendido";
+
+const { data: bookingsMade } = await supabaseAdmin
+  .from("bookings")
+  .select("id, check_in, check_out, status, total_price, listings(title, city, country)")
+  .eq("user_id", id)
+  .order("created_at", { ascending: false });
+
+const { data: listingsOwned } = await supabaseAdmin
+  .from("listings")
+  .select("id, title, city, country, status")
+  .eq("host_id", id)
+  .order("created_at", { ascending: false });
+
+const listingIds = (listingsOwned ?? []).map((l: any) => l.id);
+let bookingsReceived: any[] = [];
+if (listingIds.length > 0) {
+  const { data } = await supabaseAdmin
+    .from("bookings")
+    .select("id, check_in, check_out, status, total_price, user_id, listings(title)")
+    .in("listing_id", listingIds)
+    .order("created_at", { ascending: false });
+  bookingsReceived = data ?? [];
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  usuario: "Usuario",
+  anfitrion: "Anfitrión",
+  administrador: "Administrador",
+};
+
+const BOOKING_STATUS_BADGE: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  confirmed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  rejected: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  cancelled: "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+};
+---
+
+<BaseLayout title={`${displayName} — Admin`} description="Detalle de usuario">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white dark:bg-slate-900">
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <a href="/admin/usuarios/" class="text-sm text-slate-500 hover:underline dark:text-slate-400">← Todos los usuarios</a>
+
+    <div class="flex items-center gap-4">
+      {avatarUrl ? (
+        <img src={avatarUrl} referrerpolicy="no-referrer" class="w-16 h-16 rounded-full object-cover" alt={displayName} />
+      ) : (
+        <div class="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xl">
+          {targetUser.email?.[0]?.toUpperCase()}
+        </div>
+      )}
+      <div>
+        <h1 class="text-2xl font-bold">{displayName}</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{targetUser.email}</p>
+        <div class="flex gap-2 mt-1">
+          <span class="text-xs px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300">
+            {ROLE_LABELS[role]}
+          </span>
+          {status === "suspendido" && (
+            <span class="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300">
+              Suspendido
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+
+    <a
+      href={`/admin/chats/?start=${targetUser.id}`}
+      class="inline-block text-sm font-medium text-primary-600 hover:underline"
+    >
+      💬 Empezar un chat con {displayName}
+    </a>
+
+    <AdminUserEdit client:load userId={targetUser.id} initialName={displayName} initialStatus={status} initialRole={role} />
+
+    {listingsOwned && listingsOwned.length > 0 && (
+      <section>
+        <h2 class="text-lg font-bold mb-3">Propiedades publicadas ({listingsOwned.length})</h2>
+        <div class="space-y-2">
+          {listingsOwned.map((l: any) => (
+            <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-sm dark:border-slate-700 dark:bg-neutral-900">
+              <p class="font-medium">{l.title}</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">{l.city}, {l.country} — {l.status}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {bookingsReceived.length > 0 && (
+      <section>
+        <h2 class="text-lg font-bold mb-3">Reservas recibidas ({bookingsReceived.length})</h2>
+        <div class="space-y-2">
+          {bookingsReceived.map((b: any) => (
+            <div class="flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-sm dark:border-slate-700 dark:bg-neutral-900">
+              <div>
+                <p class="font-medium">{b.listings?.title}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{b.check_in} → {b.check_out}</p>
+              </div>
+              <span class={`text-xs px-2 py-1 rounded-full ${BOOKING_STATUS_BADGE[b.status] ?? ""}`}>
+                {b.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section>
+      <h2 class="text-lg font-bold mb-3">Reservas hechas ({(bookingsMade ?? []).length})</h2>
+      {(!bookingsMade || bookingsMade.length === 0) ? (
+        <p class="text-sm text-slate-500 dark:text-slate-400">Nunca ha hecho una reserva.</p>
+      ) : (
+        <div class="space-y-2">
+          {bookingsMade.map((b: any) => (
+            <div class="flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-sm dark:border-slate-700 dark:bg-neutral-900">
+              <div>
+                <p class="font-medium">{b.listings?.title}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{b.check_in} → {b.check_out}</p>
+              </div>
+              <span class={`text-xs px-2 py-1 rounded-full ${BOOKING_STATUS_BADGE[b.status] ?? ""}`}>
+                {b.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  </main>
+</div>
+</BaseLayout>

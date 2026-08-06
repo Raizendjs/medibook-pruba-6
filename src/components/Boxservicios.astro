@@ -1,0 +1,54 @@
+---
+
+const { titulo,icon, descripcion, imagen,url } = Astro.props;
+
+---
+
+
+<div class="w-full h-auto relative overflow-hidden  bg-black rounded-2xl">
+
+<!-- Fondos decorativos -->
+<div class="absolute inset-0 z-10 pointer-events-none">
+    
+
+    <img
+      src={imagen}
+      class="absolute -right-10 top-1 w-40 md:w-64 lg:w-85"
+      alt=""
+    />
+  </div>
+
+  <!-- Degradado de izquierda a derecha -->
+  <div class="absolute inset-0 z-20 pointer-events-none bg-gradient-to-r from-black via-black/70 to-transparent"></div>
+
+
+  <div
+        class="relative z-50 ">
+    <img class="w-15 h-auto m-10" src={icon} alt="">
+<h2 class="text-white text-3xl uppercase italic font-black m-10">{titulo}</h2>
+<p class="text-white px-10">{descripcion}</p>
+
+<a href={url}>
+<button class="text-red-500 flex px-10 pt-5">
+
+<span>Hablemos de tu proyecto</span>
+      
+            <svg xmlns="{http://www.w3.org/2000/svg}"
+                 width="20"
+                 height="20"
+                 viewBox="0 0 24 24"
+                 fill="none"
+                 stroke="currentColor"
+                 stroke-width="2"
+                 stroke-linecap="round"
+                 stroke-linejoin="round">
+              <path d="M5 12h14"/>
+              <path d="m12 5 7 7-7 7"/>
+            </svg>
+        
+
+
+</button> </a>
+</div>
+<br>   
+</div>

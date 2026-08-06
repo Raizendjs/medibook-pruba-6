@@ -1,0 +1,211 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import HostBookingsList from "../../components/HostBookingsList";
+import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData, error: userError } = await supabase.auth.getUser();
+
+if (userError || !userData.user) {
+  return Astro.redirect("/login/");
+}
+
+// 1. Reservas + listing (sin fotos ni perfiles todavía)
+const { data: bookingsRaw, error } = await supabase
+  .from("bookings")
+  .select(
+    `
+    id,
+    check_in,
+    check_out,
+    start_time,
+    end_time,
+    guests,
+    total_price,
+    status,
+    user_id,
+    listings!inner (
+      id,
+      title,
+      city,
+      country,
+      currency,
+      host_id
+    )
+  `
+  )
+  .eq("listings.host_id", userData.user.id)
+  .order("check_in", { ascending: true });
+
+// 2. Fotos: una query aparte a listing_images
+const listingIds = [...new Set((bookingsRaw ?? []).map((b: any) => b.listings.id))];
+
+let imagesMap: Record<string, string> = {};
+
+if (listingIds.length > 0) {
+  const { data: imagesData, error: imagesError } = await supabase
+    .from("listing_images")
+    .select("listing_id, url, order_index")
+    .in("listing_id", listingIds)
+    .order("order_index", { ascending: true });
+
+  if (!imagesError && imagesData) {
+    for (const img of imagesData) {
+      if (!imagesMap[img.listing_id]) {
+        imagesMap[img.listing_id] = img.url;
+      }
+    }
+  } else if (imagesError) {
+    console.error("No se pudieron cargar imágenes:", imagesError.message);
+  }
+}
+
+// 3. Perfiles del huésped. Gracias a la policy "profiles_select_contraparte_reserva"
+// (migración 005) el anfitrión ya puede ver el nombre/avatar de cualquier huésped
+// que le haya reservado, no solo el suyo propio.
+let profilesMap: Record<
+  string,
+  {
+    full_name: string | null;
+    avatar_url: string | null;
+    phone: string | null;
+    ci_ruc: string | null;
+    professional_type: string | null;
+    specialty: string | null;
+  }
+> = {};
+
+const userIds = [...new Set((bookingsRaw ?? []).map((b: any) => b.user_id))];
+
+if (userIds.length > 0) {
+  const { data: profilesData, error: profilesError } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url, phone, ci_ruc, professional_type, specialty")
+    .in("id", userIds);
+
+  if (!profilesError && profilesData) {
+    profilesMap = Object.fromEntries(
+      profilesData.map((p: any) => [
+        p.id,
+        {
+          full_name: p.full_name,
+          avatar_url: p.avatar_url,
+          phone: p.phone ?? null,
+          ci_ruc: p.ci_ruc ?? null,
+          professional_type: p.professional_type ?? null,
+          specialty: p.specialty ?? null,
+        },
+      ])
+    );
+  } else if (profilesError) {
+    console.error("No se pudieron cargar perfiles de huéspedes:", profilesError.message);
+  }
+}
+
+// 3b. Si a algún huésped le falta el nombre O la foto, usamos su
+// email/foto de la cuenta con la que inició sesión (Google, etc.) como
+// respaldo — server-side, con service role, ya que solo el usuario puede
+// leer su propio auth.users normalmente.
+const missingProfileIds = userIds.filter(
+  (id) => !profilesMap[id]?.full_name || !profilesMap[id]?.avatar_url
+);
+
+if (missingProfileIds.length > 0) {
+  const supabaseAdmin = createClient(
+    import.meta.env.PUBLIC_SUPABASE_URL!,
+    import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  await Promise.all(
+    missingProfileIds.map(async (id) => {
+      const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+      const authUser = data?.user;
+      if (!authUser) return;
+      const fallbackAvatar =
+        authUser.user_metadata?.avatar_url ?? authUser.user_metadata?.picture ?? null;
+      const fallbackName = authUser.email ? authUser.email.split("@")[0] : null;
+      profilesMap[id] = {
+        full_name: null,
+        avatar_url: null,
+        phone: null,
+        ci_ruc: null,
+        professional_type: null,
+        specialty: null,
+        ...profilesMap[id],
+        full_name: profilesMap[id]?.full_name ?? fallbackName,
+        avatar_url: profilesMap[id]?.avatar_url ?? fallbackAvatar,
+      };
+    })
+  );
+}
+
+const bookingIds = (bookingsRaw ?? []).map((b: any) => b.id);
+let ratingsByBooking: Record<string, { rating: number; comment: string | null }> = {};
+if (bookingIds.length > 0) {
+  const { data: ratingsData } = await supabase
+    .from("guest_ratings")
+    .select("booking_id, rating, comment")
+    .in("booking_id", bookingIds);
+  ratingsByBooking = Object.fromEntries(
+    (ratingsData ?? []).map((r: any) => [r.booking_id, { rating: r.rating, comment: r.comment }])
+  );
+}
+
+const bookings = (bookingsRaw ?? []).map((b: any) => ({
+  id: b.id,
+  check_in: b.check_in,
+  check_out: b.check_out,
+  start_time: b.start_time,
+  end_time: b.end_time,
+  guests: b.guests,
+  total_price: b.total_price,
+  status: b.status,
+  userId: b.user_id,
+  guestName: profilesMap[b.user_id]?.full_name ?? null,
+  guestAvatar: profilesMap[b.user_id]?.avatar_url ?? null,
+  guestPhone: profilesMap[b.user_id]?.phone ?? null,
+  guestCiRuc: profilesMap[b.user_id]?.ci_ruc ?? null,
+  guestProfessionalType: profilesMap[b.user_id]?.professional_type ?? null,
+  guestSpecialty: profilesMap[b.user_id]?.specialty ?? null,
+  guestRating: ratingsByBooking[b.id]?.rating ?? null,
+  guestRatingComment: ratingsByBooking[b.id]?.comment ?? null,
+  listing: {
+    id: b.listings.id,
+    title: b.listings.title,
+    city: b.listings.city,
+    country: b.listings.country,
+    currency: b.listings.currency,
+    imageUrl: imagesMap[b.listings.id] ?? null,
+  },
+}));
+---
+
+<BaseLayout title="Reservas de mis propiedades">
+  <br><br>
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-neutral-900 dark:text-white tracking-tight">
+        Reservas de mis propiedades
+      </h1>
+
+      <a href="/mis-propiedades/"
+        class="text-sm text-neutral-500 dark:text-slate-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
+      >
+        ← Volver a mis propiedades
+      </a>
+    </div>
+
+    {error && (
+      <p class="text-sm text-[#FF385C]">
+        Hubo un error cargando las reservas. Intenta de nuevo.
+      </p>
+    )}
+
+    {!error && <HostBookingsList client:load initialBookings={bookings} />}
+  </main>
+</BaseLayout>

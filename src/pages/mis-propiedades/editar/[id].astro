@@ -1,0 +1,70 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import EditListingForm from "../../../components/EditListingForm";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+const { id } = Astro.params;
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const { data: userData, error: userError } = await supabaseServer.auth.getUser();
+
+if (userError || !userData.user) {
+  return Astro.redirect("/login/");
+}
+
+const { data: listing, error } = await supabaseServer
+  .from("listings")
+  .select("*, listing_images(id, url, order_index)")
+  .eq("id", id)
+  .eq("host_id", userData.user.id) // asegura que solo el dueño pueda entrar aquí
+  .single();
+
+if (error || !listing) {
+  return Astro.redirect("/mis-propiedades/");
+}
+
+const images = (listing.listing_images ?? [])
+  .sort((a: any, b: any) => a.order_index - b.order_index)
+  .map((img: any) => ({ id: img.id, url: img.url }));
+---
+
+<BaseLayout title={`Editar: ${listing.title}`}>
+
+<br><br>
+
+  <main class="max-w-xl mx-auto px-4 sm:px-6 py-8">
+    
+    <a   href="/mis-propiedades/"
+      class="text-sm text-neutral-500 hover:text-neutral-900 transition-colors dark:text-neutral-400 dark:hover:text-white"
+    >
+      ← Volver a mis propiedades
+    </a>
+
+    <h1 class="text-2xl font-bold text-neutral-900 tracking-tight mt-3 mb-8 dark:text-white">
+      Editar propiedad
+    </h1>
+
+    <EditListingForm
+      client:load
+      listingId={listing.id}
+      initial={{
+        title: listing.title,
+        category: listing.category,
+        zone: listing.zone,
+        description: listing.description,
+        price: listing.price,
+        currency: listing.currency,
+        country: listing.country,
+        city: listing.city,
+        address: listing.address,
+        lat: listing.lat,
+        lng: listing.lng,
+      }}
+      initialImages={images}
+    />
+  </main>
+</BaseLayout>

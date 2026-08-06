@@ -1,0 +1,21 @@
+---
+import { createSupabaseServerClient } from "../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+// prueba simple: pedir sesión actual
+const { data, error } = await supabase.auth.getUser();
+---
+
+<html>
+  <body>
+    <h1>Test Supabase SSR</h1>
+
+    <pre>
+      {JSON.stringify({ user: data?.user, error }, null, 2)}
+    </pre>
+  </body>
+</html> 

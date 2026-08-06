@@ -1,0 +1,112 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "../../../lib/supabase/server";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const supabaseServer = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers();
+const authUsers = authUsersData?.users ?? [];
+
+const { data: profiles } = await supabaseServer
+  .from("profiles")
+  .select("id, role, full_name, avatar_url, status");
+
+const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+const isOnline = (u: any) => {
+  const last = new Date(u.last_sign_in_at || 0).getTime();
+  return (Date.now() - last) / 60000 < 10;
+};
+
+const users = authUsers
+  .map((u) => {
+    const p = profileById.get(u.id);
+    return {
+      id: u.id,
+      email: u.email,
+      name: p?.full_name || u.user_metadata?.full_name || u.user_metadata?.name || "Sin nombre",
+      avatar: p?.avatar_url || u.user_metadata?.avatar_url || null,
+      role: p?.role ?? "usuario",
+      status: p?.status ?? "activo",
+      online: isOnline(u),
+    };
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+const ROLE_BADGE: Record<string, string> = {
+  usuario: "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300",
+  anfitrion: "bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-300",
+  administrador: "bg-slate-800 text-white dark:bg-white dark:text-slate-900",
+};
+---
+
+<BaseLayout title="Usuarios — Admin" description="Gestión de usuarios">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+    <div>
+      <a href="/admin/" class="text-sm text-slate-500 hover:underline">← Panel de administrador</a>
+      <h1 class="text-2xl font-bold mt-2">Usuarios ({users.length})</h1>
+    </div>
+
+    <div class="space-y-3">
+      {users.map((u) => (
+        <a
+          href={`/admin/usuarios/${u.id}/`}
+          class="flex justify-between items-center p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:border-primary-400 transition"
+        >
+          <div class="flex items-center gap-3">
+            {u.avatar ? (
+              <img src={u.avatar} referrerpolicy="no-referrer" class="w-10 h-10 rounded-full object-cover" alt={u.name} />
+            ) : (
+              <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold">
+                {u.email?.[0]?.toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p class="font-medium text-sm">{u.name}</p>
+              <p class="text-xs text-slate-500">{u.email}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            {u.status === "suspendido" && (
+              <span class="text-xs px-3 py-1 rounded-full bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300">
+                Suspendido
+              </span>
+            )}
+            <span class={`text-xs px-3 py-1 rounded-full ${ROLE_BADGE[u.role] ?? ROLE_BADGE.usuario}`}>
+              {u.role}
+            </span>
+            <span class={`text-xs px-3 py-1 rounded-full ${
+              u.online
+                ? "bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300"
+                : "bg-slate-200 text-slate-500"
+            }`}>
+              {u.online ? "Online" : "Offline"}
+            </span>
+          </div>
+        </a>
+      ))}
+    </div>
+
+    <p class="text-xs text-slate-500">
+      Para asignar el rol de administrador directamente, hazlo desde el
+      editor de tablas de Supabase, en la columna <code>role</code> de la
+      tabla <code>profiles</code>.
+    </p>
+  </main>
+</div>
+</BaseLayout>

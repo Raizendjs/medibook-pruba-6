@@ -1,0 +1,23 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ListingForm from "../../components/ListingForm";
+
+const user = Astro.locals.user;
+if (!user) {
+  return Astro.redirect("/login/");
+}
+---
+
+<BaseLayout title="Publicar propiedad" description="Publica una nueva propiedad en medibook">
+  <br /><br />
+  <main class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <a
+      href="/mis-propiedades/"
+      class="inline-block mb-6 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:underline"
+    >
+      ← Volver a mis propiedades
+    </a>
+
+    <ListingForm client:load />
+  </main>
+</BaseLayout>

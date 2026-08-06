@@ -1,0 +1,24 @@
+---
+import { createSupabaseServerClient } from "../../lib/supabase/server";
+
+const supabase = createSupabaseServerClient({
+  request: Astro.request,
+  cookies: Astro.cookies,
+});
+
+const code = Astro.url.searchParams.get("code");
+
+console.log("CALLBACK HIT, code presente:", !!code);
+
+if (code) {
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  console.log("EXCHANGE ERROR:", error?.message);
+
+  if (!error) {
+    return Astro.redirect("/post-login/");
+  }
+}
+
+return Astro.redirect("/login/");
+---

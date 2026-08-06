@@ -1,0 +1,97 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { createClient } from "@supabase/supabase-js";
+
+if (Astro.locals.role !== "administrador") {
+  return Astro.redirect("/login/");
+}
+
+const supabaseAdmin = createClient(
+  import.meta.env.PUBLIC_SUPABASE_URL!,
+  import.meta.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const { data: authUsersData } = await supabaseAdmin.auth.admin.listUsers();
+const usersById = new Map((authUsersData?.users ?? []).map((u) => [u.id, u]));
+
+function nameFor(u: any) {
+  if (!u) return "Desconocido";
+  return u.user_metadata?.full_name || u.user_metadata?.name || u.email || "Desconocido";
+}
+
+const { data: allBookingsRaw } = await supabaseAdmin
+  .from("bookings")
+  .select(
+    "id, check_in, check_out, guests, total_price, status, user_id, listings(id, title, host_id)"
+  )
+  .order("created_at", { ascending: false });
+
+const allBookings = (allBookingsRaw ?? []).map((b: any) => ({
+  id: b.id,
+  check_in: b.check_in,
+  check_out: b.check_out,
+  guests: b.guests,
+  total_price: b.total_price,
+  status: b.status,
+  guestName: nameFor(usersById.get(b.user_id)),
+  listingTitle: b.listings?.title ?? "—",
+  hostName: nameFor(usersById.get(b.listings?.host_id)),
+}));
+
+const BOOKING_STATUS_BADGE: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  confirmed: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  rejected: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  cancelled: "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+};
+---
+
+<BaseLayout title="Reservas — Admin">
+<div class="min-h-screen bg-slate-50 dark:bg-slate-950 mt-15 text-slate-900 dark:text-white">
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-6">
+    <div>
+      <a href="/admin/" class="text-sm text-slate-500 hover:underline">← Panel de administrador</a>
+      <h1 class="text-2xl font-bold mt-2">Todas las reservas ({allBookings.length})</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        Vista general de todo el sistema, de solo lectura. Confirmar o
+        rechazar una reserva lo hace el anfitrión correspondiente.
+      </p>
+    </div>
+
+    {allBookings.length === 0 ? (
+      <p class="text-sm text-slate-500">Todavía no hay reservas en el sistema.</p>
+    ) : (
+      <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-100 dark:bg-slate-800 text-left">
+            <tr>
+              <th class="px-4 py-2 font-medium">Propiedad</th>
+              <th class="px-4 py-2 font-medium">Anfitrión</th>
+              <th class="px-4 py-2 font-medium">Huésped</th>
+              <th class="px-4 py-2 font-medium">Fechas</th>
+              <th class="px-4 py-2 font-medium">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allBookings.map((b) => (
+              <tr class="border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <td class="px-4 py-2">{b.listingTitle}</td>
+                <td class="px-4 py-2 text-slate-500">{b.hostName}</td>
+                <td class="px-4 py-2 text-slate-500">{b.guestName}</td>
+                <td class="px-4 py-2 text-slate-500 whitespace-nowrap">
+                  {b.check_in} → {b.check_out}
+                </td>
+                <td class="px-4 py-2">
+                  <span class={`text-xs px-2 py-1 rounded-full ${BOOKING_STATUS_BADGE[b.status] ?? BOOKING_STATUS_BADGE.cancelled}`}>
+                    {b.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </main>
+</div>
+</BaseLayout>

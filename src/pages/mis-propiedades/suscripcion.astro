@@ -1,0 +1,6 @@
+---
+// Movida a /suscripcion/ (ruta neutral) porque este prefijo /mis-propiedades/
+// está restringido a "anfitrion" en el middleware, y la suscripción también
+// aplica a "usuario".
+return Astro.redirect("/suscripcion/");
+---
